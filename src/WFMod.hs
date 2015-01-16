@@ -4,10 +4,12 @@ module WFMod where
 import Control.Monad
 import Control.Monad.Error
 import qualified Data.List as L
+import qualified Data.Set as S
 
 import Derive
 import Freshening
 import Syntax
+import Substitution
 import Verification
 import WFBase
 import WFExt
@@ -73,13 +75,12 @@ wfMod intfs base mod = do
                 -- L.nub keeps left-most occurence of an extension
 
   -- Is composition of imported extensions well-formed?
-  wfExts base extsImp
+  wfSoundExts base extsImp
   let baseX = foldl mergeBX base extsImp
 
-  -- Is extension defined in this module well-formed and sound
+  -- Are extensions defined in this module well-formed and sound
   -- with respect to base system and imported extensions?
-  wfExt baseX ext
-  soundExt baseX ext
+  wfSoundExt baseX ext
 
   -- Build module signature:
   -- 1. Build signature repository
@@ -92,10 +93,11 @@ wfMod intfs base mod = do
                (ECon sigRepNil []) intfs
       judgSig = Judg [sigRep, expr, EVar varSig] sigJudg
 
-  deriv <- derive [] (getBaseInfRules baseX) judgSig
+  (sub,[deriv]) <-
+           deriveSub [] (getBaseInfRules baseX)
+               [judgSig] (S.singleton varSig)
 
-  let Judg [_,_,exprSig] _ = concl deriv
-                             --applySubExpr sub (EVar varSig)
+  let exprSig = applySubExpr sub (EVar varSig)
 
   -- Interface: signature and imported plus defined extensions
   return (Intf modId exprSig (extsImp++[ext]), extsImp, deriv)
@@ -125,15 +127,15 @@ findModIdImp names (ECon name exprs) =
     else
         throwError "wrong import constructor in import list"
 
--- wfSoundExt :: Base -> Ext -> Either String ()
--- wfSoundExt base ext = do
---   wfExt base ext
-  -- soundExt base ext
+wfSoundExt :: Base -> Ext -> Either String ()
+wfSoundExt base ext = do
+  wfExt base ext
+  soundExt base ext
 
-wfExts :: Base -> [Ext] -> Either String ()
-wfExts base exts =
+wfSoundExts :: Base -> [Ext] -> Either String ()
+wfSoundExts base exts =
     foldM_ (\base ext -> do
-             wfExt base ext
+             wfSoundExt base ext
              return (mergeBX base ext)) base exts
 
 findIntfs :: [Intf] -> [Expr] -> Either String [Intf]

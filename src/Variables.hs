@@ -138,8 +138,6 @@ vs2 :: Expr
 vs2 = mvar "s2" "Term"
 vBs :: Expr
 vBs = mvar "bdgs" "Bindings"
-vBNNs :: Expr
-vBNNs = mvar "bdgs" "BindingsNN"
 vBBLs :: Expr
 vBBLs = mvar "bdgs" "BindingsBL"
 vmid :: Expr

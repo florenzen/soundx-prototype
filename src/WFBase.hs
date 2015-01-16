@@ -7,19 +7,20 @@ import Data.Either.Utils
 import Syntax
 import Utils
 
-wfArities :: [Arity] -> Either String ()
-wfArities [] = return ()
-wfArities (Arity name names0 name0 : arities) = do
-  unless (not (name `elem` map getArityName arities))
-             (throwError "Duplicate constructor name")
-  wfArities arities
 
-wfForms :: [Form] -> Either String ()
-wfForms [] = return ()
-wfForms (Form name names0 : forms) = do
-  unless (not (name `elem` map getFormName forms))
+wfArities :: [Arity] -> [Arity] -> Either String ()
+wfArities arities1 [] = return ()
+wfArities arities1 (Arity name names0 name0 : arities) = do
+  unless (not (name `elem` map getArityName arities1))
+             (throwError "Duplicate constructor name")
+  wfArities (arities1 ++ [Arity name names0 name0]) arities
+
+wfForms :: [Form] -> [Form] -> Either String ()
+wfForms forms1 [] = return ()
+wfForms forms1 (Form name names0 : forms) = do
+  unless (not (name `elem` map getFormName forms1))
              (throwError "Duplicate judgment name")
-  wfForms forms
+  wfForms (forms1 ++ [Form name names0]) forms
 
 wfExpr :: [Arity] -> Expr -> Either String Name
 wfExpr arities (EVar (Var name nameS)) = return nameS
@@ -42,13 +43,15 @@ wfJudg arities forms (Judg exprs name) = do
              (throwError $ "judgment applied to wrong arguments: " ++ name +%+
              show exprs)
 
-wfInfRules :: [Arity] -> [Form] -> [InfRule] -> Either String ()
-wfInfRules arities forms [] = return ()
-wfInfRules arities forms (InfRule judgs name judg : infRules) = do
-  when (name `elem` map getInfRuleName infRules)
+wfInfRules :: [Arity] -> [Form] -> [InfRule] -> [InfRule] -> Either String ()
+wfInfRules arities forms infRules1 [] = return ()
+wfInfRules arities forms infRules1
+              (InfRule judgs name judg : infRules) = do
+  when (name `elem` map getInfRuleName infRules1)
            (throwError "Duplicate rule name")
   mapM_ (wfJudg arities forms) (judg:judgs)
-  wfInfRules arities forms infRules
+  wfInfRules arities forms
+                    (infRules1++[InfRule judgs name judg]) infRules
 
 wfImpCons :: [Arity] -> Name -> Name -> [Name] -> Either String ()
 wfImpCons arities modIdSort impSort [] = return ()
@@ -84,11 +87,11 @@ wfBase base = do
 
   -- Basics
   -- Constructor arities and judgment forms
-  wfArities arities
-  wfForms forms
+  wfArities [] arities
+  wfForms [] forms
 
   -- Type system
-  wfInfRules arities forms infRules
+  wfInfRules arities forms [] infRules
 
   -- Module system
   -- Declaration of import constructors

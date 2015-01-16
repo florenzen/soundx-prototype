@@ -2,6 +2,7 @@ module Test where
 
 -- import Debug.Trace
 
+import qualified Data.Set as S
 import           Prelude hiding (mod)
 import           Test.HUnit
 
@@ -21,21 +22,22 @@ testCaseDeriveDesugar base (label,exts,judg) =
 assertionDeriveDesugar :: Base -> [Ext] -> Judg -> Assertion
 assertionDeriveDesugar base [] judg =
     let infRules = getBaseInfRules base
-    in case derive [] infRules judg of
+    in case derive [] infRules [judg] (varsJudg judg) of
         Left msg -> assertFailure ("Judgment " ++ show judg ++ " not derived")
-        Right deriv ->
+        Right [deriv] ->
             assertBool ("Derivation for " ++ show judg ++ " not valid")
                          (validate [] infRules deriv)
 assertionDeriveDesugar base exts judg =
     let infRulesX = concatMap getExtInfRules exts
         infRules = getBaseInfRules base
         infRulesAll = infRulesX ++ infRules
-    in case derive [] infRulesAll judg of
+    in case derive [] infRulesAll [judg] (varsJudg judg) of
          Left msg -> assertFailure ("Judgment " ++ show judg ++ " not derived")
-         Right deriv ->
+         Right [deriv] ->
              let deriv' = desugar base exts deriv
                  derivResult = either (const False) (const True)
-                               (derive [] infRules (concl deriv'))
+                               (derive [] infRules
+                                [concl deriv'] S.empty)
                  validateResult = validate [] infRules deriv'
              in assertBool ("Could not derive or validate result " ++
                             "of desugaring in B: " ++ show (concl deriv'))

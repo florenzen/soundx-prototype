@@ -10,18 +10,9 @@ import Substitution
 import Unification
 import Freshening
 
-derive :: [Deriv] -> [InfRule] -> Judg -> Either String Deriv
-derive derivsAsm infRules judg =
-    let varsAsm = varsDerivs derivsAsm
-        varsGoal = varsJudg judg
-        varsUnify = varsGoal `S.difference` varsAsm
-    in case deriveMany derivsAsm infRules [judg] varsUnify of
-         Left msg -> Left msg
-         Right [deriv] -> Right deriv
-
-deriveMany :: [Deriv] -> [InfRule] -> [Judg] -> S.Set Var
+derive :: [Deriv] -> [InfRule] -> [Judg] -> S.Set Var
        -> Either String [Deriv]
-deriveMany derivsAsm infRules judgs varSet = do
+derive derivsAsm infRules judgs varSet = do
   (sub,derivs) <- deriveSub derivsAsm infRules judgs varSet
   return derivs
 

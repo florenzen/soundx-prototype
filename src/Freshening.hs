@@ -47,14 +47,14 @@ freshUnivRR varSet (UnivRR expr1 expr2) =
         (sub2,expr21) = freshExpr varSet sub1 expr2
     in (sub2, UnivRR expr11 expr21)
 
-freshGrdRR :: S.Set Var -> GrdRR -> (Sub,GrdRR)
-freshGrdRR varSet (GrdRR judgs exprs11 expr1 exprs12 name expr2) =
+freshResRR :: S.Set Var -> ResRR -> (Sub,ResRR)
+freshResRR varSet (ResRR judgs exprs11 expr1 exprs12 name expr2) =
     let (sub1,judgs1) = freshJudgs varSet emptySub judgs
         (sub2,exprs111) = freshExprs varSet sub1 exprs11
         (sub3,expr11) = freshExpr varSet sub2 expr1
         (sub4,exprs121) = freshExprs varSet sub3 exprs12
         (sub5,expr21) = freshExpr varSet sub4 expr2
-    in (sub5,GrdRR judgs1 exprs111 expr11 exprs121 name expr21)
+    in (sub5,ResRR judgs1 exprs111 expr11 exprs121 name expr21)
 
 pickFreshVar :: S.Set Var -> Var -> Var
 pickFreshVar varSet (Var name nameS) = pickFreshVarCount 0

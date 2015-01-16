@@ -143,13 +143,11 @@ repnil = ECon "RepNil" []
 infRulesFJ :: [InfRule]
 infRulesFJ = [
  InfRule [] "F-Empty" (fj vx envnil),
- InfRule [neq vx vy, fj vx vC] "F-TmVar" (fj vx (envtm vC vy vT))
- ]
+ InfRule [neq vx vy, fj vx vC] "F-TmVar" (fj vx (envtm vC vy vT))]
 
 infRulesTJ :: [InfRule]
 infRulesTJ = [
  InfRule [] "T-Var" (tj (envtm vC vx vT) (tmvar vx) vT),
- InfRule [neq vx vy, tj vC (tmvar vx) vT] "T-Var1" (tj (envtm vC vy vS) (tmvar vx) vT),
  InfRule [] "T-True" (tj vC tmtrue tybool),
  InfRule [] "T-False" (tj vC tmfalse tybool),
  InfRule [tj vC vt1 tybool, tj vC vt2 vT, tj vC vt3 vT] "T-If"
@@ -159,9 +157,9 @@ infRulesTJ = [
    (tj vC (tmabs vx vT1 vt) (tyfun vT1 vT2)),
  InfRule [tj vC vt1 (tyfun vT1 vT2), tj vC vt2 vT1] "T-App"
    (tj vC (tmapp vt1 vt2) vT2),
- -- InfRule [fj vx vC,
- --          tj vC vt vT] "T-Weak1"
- --          (tj (envtm vC vx vS) vt vT),
+ InfRule [fj vx vC,
+          tj vC vt vT] "T-Weak1"
+          (tj (envtm vC vx vS) vt vT),
  InfRule [tj vC vt1 tynat, tj vC vt2 tynat] "T-Add"
    (tj vC (tmadd vt1 vt2) tynat)
  ]

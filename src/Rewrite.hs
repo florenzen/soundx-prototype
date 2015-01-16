@@ -4,22 +4,22 @@ module Rewrite where
 
 import           Control.Applicative
 import           Control.Monad
-import           Control.Monad.Error
+import           Data.Either.Utils
 import qualified Data.List as L
 import qualified Data.Map as M
 import           Data.Maybe
 import qualified Data.Set as S
 import           Prelude hiding (repeat)
-import           Data.Either.Utils
 
 import           Derive
+import           Forward
 import           Freshening
 import           Substitution
 import           Syntax
 import           Unification
 import           Utils
 import           WFBase
-import           Validation
+
 
 -- One step rewriting
 
@@ -52,13 +52,13 @@ rewriteSub univRRs sub =
   let (vars,exprs) = unzip (M.toList sub)
   in pure (M.fromList . zip vars) <*> mapLeftmost (rewriteExpr univRRs) exprs
 
-rewriteConcl :: [GrdRR] -> ([Judg], Judg) -> Maybe Judg
-rewriteConcl grdRRs (judgs,judg) =
-    transformLeftmost tryGrdRR grdRRs
+rewriteConcl :: [ResRR] -> ([Judg], Judg) -> Maybe Judg
+rewriteConcl resRRs (judgs,judg) =
+    transformLeftmost tryResRR resRRs
     where
-      tryGrdRR grdRR =
-          let (subFresh, GrdRR judgs1 exprs1 expr exprs2 name expr2) =
-                  freshGrdRR (varsJudgs (judg:judgs)) grdRR
+      tryResRR resRR =
+          let (subFresh, ResRR judgs1 exprs1 expr exprs2 name expr2) =
+                  freshResRR (varsJudgs (judg:judgs)) resRR
               varSet = varsJudgs judgs1 `S.union`
                        varsExprs exprs1 `S.union`
                        varsExpr expr `S.union`
@@ -75,11 +75,11 @@ rewriteConcl grdRRs (judgs,judg) =
                        exprIR' = applySubExpr sub expr2
                    in Just $ Judg (exprsIR1++exprIR':exprsIR2) nameIR
 
-rewriteInfRule :: [UnivRR] -> [GrdRR] -> ([Judg],Judg) -> Maybe ([Judg],Judg)
-rewriteInfRule univRRs grdRRs (judgs,judg) =
+rewriteInfRule :: [UnivRR] -> [ResRR] -> ([Judg],Judg) -> Maybe ([Judg],Judg)
+rewriteInfRule univRRs resRRs (judgs,judg) =
     (do judg' <- rewriteJudg univRRs judg
         return (judgs,judg')) `mplus`
-    (do judg' <- rewriteConcl grdRRs (judgs,judg)
+    (do judg' <- rewriteConcl resRRs (judgs,judg)
         return (judgs,judg')) `mplus`
     (do judgs' <- mapLeftmost (rewriteJudg univRRs) judgs
         return (judgs',judg))
@@ -89,11 +89,11 @@ rewriteInfRule univRRs grdRRs (judgs,judg) =
 desugarSub :: [UnivRR] -> Sub -> Sub
 desugarSub univRRs sub = repeat (rewriteSub univRRs) sub
 
-desugarInfRule :: [UnivRR] -> [GrdRR] -> ([Judg], Judg) -> ([Judg], Judg)
-desugarInfRule univRRs grdRRs (judgs,judg) =
-    repeat (rewriteInfRule univRRs grdRRs) (judgs,judg)
+desugarInfRule :: [UnivRR] -> [ResRR] -> ([Judg], Judg) -> ([Judg], Judg)
+desugarInfRule univRRs resRRs (judgs,judg) =
+    repeat (rewriteInfRule univRRs resRRs) (judgs,judg)
 
--- Original formulation with loop in ExtTD
+
 -- desugarDeriv :: Base -> Ext -> Deriv -> Maybe Deriv
 -- desugarDeriv base ext deriv@(Deriv derivs name judg) =
 --     desugarDerivBase base ext deriv `mplus`
@@ -101,7 +101,6 @@ desugarInfRule univRRs grdRRs (judgs,judg) =
 --     desugarDerivExtTD base ext deriv `mplus`
 --     (error ("cannot desugar" ++ show (concl deriv)))
 
--- Only one topdown and one bottom up pass
 -- desugarDeriv :: Base -> Ext -> Deriv -> Maybe Deriv
 -- desugarDeriv base ext deriv =
 --     let deriv' = topdown (rewriteDerivExtExt base ext) deriv
@@ -109,18 +108,19 @@ desugarInfRule univRRs grdRRs (judgs,judg) =
 --                                       rewriteDerivExtBase base ext deriv) deriv'
 --     in Just deriv''
 
--- Apply td desugarings on top-down descend and
--- bu desugarings on bottom-up ascend.
+-- desugarDeriv :: Base -> Ext -> Deriv -> Maybe Deriv
+-- desugarDeriv base ext deriv =
+--     Just $ downup rewriteTD rewriteBU deriv
+--     where
+--       rewriteBU deriv = fromJust (rewriteDerivBase base ext deriv `mplus`
+--                                   rewriteDerivExtBase base ext deriv `mplus`
+--                                   return deriv)
+--       rewriteTD deriv = fromJust (rewriteDerivExtExt base ext deriv `mplus`
+--                                   return deriv)
 desugarDeriv :: Base -> Ext -> Deriv -> Maybe Deriv
 desugarDeriv base ext deriv =
-    Just $ downup rewriteTD rewriteBU deriv
-    where
-      rewriteBU deriv = fromJust (rewriteDerivBase base ext deriv `mplus`
-                                  rewriteDerivExtBase base ext deriv)
-                                  -- return deriv)
-      rewriteTD deriv = fromJust (rewriteDerivExtExt base ext deriv `mplus`
-                                  return deriv)
-
+    Just $ bottomup (\deriv -> rewriteDerivBase base ext deriv `mplus`
+                               rewriteDerivExt base ext deriv) deriv
 
 -- Implements D-Base
 desugarDerivBase :: Base -> Ext -> Deriv -> Maybe Deriv
@@ -128,7 +128,7 @@ desugarDerivBase base ext deriv@(Deriv derivs name judg) = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritysX infRulesX univRRsX grdRRsX = ext
+      Ext aritysX infRulesX univRRsX resRRsX = ext
   infRule <- findInfRule infRules name
   let (subFresh, InfRule judgsIR nameIR judgIR) =
           freshInfRule (varsDeriv deriv) infRule
@@ -163,11 +163,11 @@ desugarDerivExtBU base ext deriv@(Deriv derivs name judg) = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext aritiesX infRulesX univRRsX resRRsX = ext
   infRule <- findInfRule infRulesX name
   let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
           freshInfRule (varsDeriv deriv) infRule
-      (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX (judgsIR,judgIR)
+      (judgsIR',judgIR') = desugarInfRule univRRsX resRRsX (judgsIR,judgIR)
   guard (all isRight (map (wfJudg arities forms) judgsIR'))
   derivs' <- mapM (desugarDeriv base ext) derivs
   sub1 <- case unifyJudgs (varsJudgs judgsIR')
@@ -189,9 +189,9 @@ desugarDerivExtBU base ext deriv@(Deriv derivs name judg) = do
                                 varsJudgs judgsIR')
       sub21' = desugarSub univRRsX sub21
       judgIR'' = applySubJudg (sub1 `composeSub` sub21') judgIR'
-      deriveResult = derive derivs' infRules judgIR''
+      deriveResult = deriveSub derivs' infRules [judgIR''] S.empty
   case deriveResult of
-    Right deriv' -> return deriv'
+    Right (sub,[deriv']) -> return deriv'
     Left msg -> error ("desugarDerivExtBU: resolution failed. MUST NOT HAPPEN" ++
                        "\n  Conclusion to derive:       " ++ show judgIR'' ++
                        "\n  Conclusions of assumptions: " ++
@@ -203,11 +203,11 @@ desugarDerivExtTD base ext deriv@(Deriv derivs name judg) = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext aritiesX infRulesX univRRsX resRRsX = ext
   infRule <- findInfRule infRulesX name
   let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
           freshInfRule (varsDeriv deriv) infRule
-      (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX (judgsIR,judgIR)
+      (judgsIR',judgIR') = desugarInfRule univRRsX resRRsX (judgsIR,judgIR)
   guard (not (all isRight (map (wfJudg arities forms) judgsIR')))
   sub <- case unifyJudgs (varsJudgs (judgIR:judgsIR))
                 (zip (judgIR:judgsIR) (judg : map concl derivs)) of
@@ -217,9 +217,10 @@ desugarDerivExtTD base ext deriv@(Deriv derivs name judg) = do
                               "\n  Premises:    " ++ show judgsIR ++
                               "\n  Conlcusions: " ++ show (map concl derivs))
   let judgIR'' = applySubJudg sub judgIR'
-      deriveResult = derive derivs (infRules++infRulesX) judgIR''
+      deriveResult = deriveSub derivs (infRules++infRulesX)
+                      [judgIR''] S.empty
   case deriveResult of
-    Right deriv' -> desugarDeriv base ext deriv'
+    Right (sub,[deriv']) -> desugarDeriv base ext deriv'
     Left msg -> error ("desugarDerivExtTD: resolution failed." ++
                        "\n  Conclusion to derive:       " ++ show judgIR'' ++
                        "\n  Conclusions of assumptions: " ++
@@ -230,44 +231,57 @@ rewriteDerivBase base ext deriv@(Deriv derivs name judg) = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritysX infRulesX univRRsX grdRRsX = ext
+      Ext aritysX infRulesX univRRsX resRRsX = ext
   infRule <- findInfRule infRules name
   let (subFresh, InfRule judgsIR nameIR judgIR) =
           freshInfRule (varsDeriv deriv) infRule
-  sub1 <- case unifyJudgs (varsJudgs judgsIR)
-               (zip judgsIR (map concl derivs)) of
-            Right sub -> return sub
-            Left msg -> error ("desugarDerivBase: forward step failed. STUCK." ++
-                               "\n  Rule:        " ++ nameIR ++
-                               "\n  Premises:    " ++ show judgsIR ++
-                               "\n  Conclusions: " ++ show (map concl derivs) ++
-                               "\n  Base rules   " ++ show (map getInfRuleName
-                                                            (getBaseInfRules base)))
-                        Nothing
   sub2 <- case (unifyJudg (varsJudg judgIR) judgIR judg) of
             Right sub -> Just sub
-            Left msg -> error ("desugarDerivBase: could not calculate σ₂." ++
-                               "MUST NOT HAPPEN" ++
-                               "\n  Rule:                    " ++ nameIR ++
-                               "\n  Rule's conclusion:       " ++ show judgIR ++
-                               "\n  Derivation's conclusion: " ++ show judg)
+            Left msg -> error ("desugarDerivBase: could not calculate σ₂.")
   let sub21 = restrictSub sub2 (domSub sub2 `S.difference`
-                                varsJudgs judgsIR)
+                                 varsJudgs judgsIR)
       sub21' = desugarSub univRRsX sub21
-      sub = sub21' `composeSub` sub1
-  return (Deriv derivs name (applySubJudg sub judgIR))
+      derivVerif = Deriv (map Asm judgsIR) nameIR (applySubJudg sub21' judgIR)
+      deriv' = case forward base derivs (judgsIR,judgIR) derivVerif of
+                 Left msg -> error $ "STUCK: " ++ msg
+                 Right deriv' -> deriv'
+  return deriv'
+
+  -- sub1 <- case unifyJudgs (varsJudgs judgsIR)
+  --              (zip judgsIR (map concl derivs)) of
+  --           Right sub -> return sub
+  --           Left msg -> error ("desugarDerivBase: forward step failed. STUCK." ++
+  --                              "\n  Rule:        " ++ nameIR ++
+  --                              "\n  Premises:    " ++ show judgsIR ++
+  --                              "\n  Conclusions: " ++ show (map concl derivs) ++
+  --                              -- "\n  Orig. Concl. " ++ show (map concl derivs) ++
+  --                              "\n  Base rules   " ++ show (map getInfRuleName
+  --                                                           (getBaseInfRules base)))
+  --                       Nothing
+  -- sub2 <- case (unifyJudg (varsJudg judgIR) judgIR judg) of
+  --           Right sub -> Just sub
+  --           Left msg -> error ("desugarDerivBase: could not calculate σ₂." ++
+  --                              "MUST NOT HAPPEN" ++
+  --                              "\n  Rule:                    " ++ nameIR ++
+  --                              "\n  Rule's conclusion:       " ++ show judgIR ++
+  --                              "\n  Derivation's conclusion: " ++ show judg)
+  -- let sub21 = restrictSub sub2 (domSub sub2 `S.difference`
+  --                               varsJudgs judgsIR)
+  --     sub21' = desugarSub univRRsX sub21
+  --     sub = sub21' `composeSub` sub1
+  -- return (Deriv derivs name (applySubJudg sub judgIR))
 
 rewriteDerivExtBase :: Base -> Ext -> Deriv -> Maybe Deriv
 rewriteDerivExtBase base ext deriv@(Deriv derivs name judg) = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext aritiesX infRulesX univRRsX resRRsX = ext
   infRule <- findInfRule infRulesX name
   let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
           freshInfRule (varsDeriv deriv) infRule
-      (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX (judgsIR,judgIR)
-  -- guard (all isRight (map (wfJudg arities forms) judgsIR'))
+      (judgsIR',judgIR') = desugarInfRule univRRsX resRRsX (judgsIR,judgIR)
+  guard (all isRight (map (wfJudg arities forms) judgsIR'))
   -- derivs' <- mapM (desugarDeriv base ext) derivs
   sub1 <- case unifyJudgs (varsJudgs judgsIR')
                  (zip judgsIR' (map concl derivs)) of
@@ -288,9 +302,9 @@ rewriteDerivExtBase base ext deriv@(Deriv derivs name judg) = do
                                 varsJudgs judgsIR')
       sub21' = desugarSub univRRsX sub21
       judgIR'' = applySubJudg (sub1 `composeSub` sub21') judgIR'
-      deriveResult = derive derivs infRules judgIR''
+      deriveResult = deriveSub derivs infRules [judgIR''] S.empty
   case deriveResult of
-    Right deriv' -> return deriv'
+    Right (sub,[deriv']) -> return deriv'
     Left msg -> error ("desugarDerivExtBU: resolution failed. MUST NOT HAPPEN" ++
                        "\n  Conclusion to derive:       " ++ show judgIR'' ++
                        "\n  Conclusions of assumptions: " ++
@@ -302,13 +316,12 @@ rewriteDerivExtExt base ext deriv@(Deriv derivs name judg) = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext aritiesX infRulesX univRRsX resRRsX = ext
   infRule <- findInfRule infRulesX name
   let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
           freshInfRule (varsDeriv deriv) infRule
-      (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX (judgsIR,judgIR)
-  --guard (not (all isRight (map (wfJudg arities forms) judgsIR')))
-  guard (fromRight (classifyInfRule base ext infRule) == PE)
+      (judgsIR',judgIR') = desugarInfRule univRRsX resRRsX (judgsIR,judgIR)
+  guard (not (all isRight (map (wfJudg arities forms) judgsIR')))
   sub <- case unifyJudgs (varsJudgs (judgIR:judgsIR))
                 (zip (judgIR:judgsIR) (judg : map concl derivs)) of
            Right sub -> Just sub
@@ -318,9 +331,10 @@ rewriteDerivExtExt base ext deriv@(Deriv derivs name judg) = do
                               "\n  Premises:    " ++ show judgsIR ++
                               "\n  Conlcusions: " ++ show (map concl derivs))
   let judgIR'' = applySubJudg sub judgIR'
-      deriveResult = derive derivs (infRules++infRulesX) judgIR''
+      deriveResult = deriveSub derivs infRules --(infRules++infRulesX)
+                      [judgIR''] S.empty
   case deriveResult of
-    Right deriv' -> return deriv'
+    Right (sub,[deriv']) -> return deriv'
     -- desugarDeriv base ext deriv'
     Left msg -> error ("desugarDerivExtTD: resolution failed. MUST NOT HAPPEN" ++
                        "\n  Conclusion to derive:       " ++ show judgIR'' ++
@@ -328,7 +342,30 @@ rewriteDerivExtExt base ext deriv@(Deriv derivs name judg) = do
                        show (map concl derivs))
 
 
--- Rewrite strategies (from Stratego tutorial)
+
+rewriteDerivExt :: Base -> Ext -> Deriv -> Maybe Deriv
+rewriteDerivExt base ext deriv@(Deriv derivs name judg) = do
+  let arities = getBaseArities base
+      forms = getBaseForms base
+      infRules = getBaseInfRules base
+      Ext aritiesX infRulesX univRRsX resRRsX = ext
+  infRule <- findInfRule infRulesX name
+  let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
+          freshInfRule (varsDeriv deriv) infRule
+  sub2 <- case (unifyJudg (varsJudg judgIR) judgIR judg) of
+            Right sub -> Just sub
+            Left msg -> error ("desugarDerivBase: could not calculate σ₂.")
+  let sub21 = restrictSub sub2 (domSub sub2 `S.difference`
+                                 varsJudgs judgsIR)
+      sub21' = desugarSub univRRsX sub21
+      (judgsIR',judgIR') = desugarInfRule univRRsX resRRsX (judgsIR,judgIR)
+      [derivVerif] = fromRight $ derive (map Asm judgsIR')
+                     infRules [applySubJudg sub21' judgIR'] S.empty
+      deriv' = case forward base derivs (judgsIR',judgIR') derivVerif of
+                 Left msg -> error $ "STUCK: " ++ msg
+                 Right deriv' -> deriv'
+  return deriv'
+
 
 -- downup(s1, s2) = s1; all(downup(s1, s2)); s2
 -- downup(s) = s; all(downup(s)); s
@@ -374,65 +411,3 @@ desugarMod base exts deriv =
         baseX = foldl mergeBX base exts1
         deriv' = fromJust $ desugarDeriv baseX ext deriv
     in desugarMod base exts1 deriv'
-
-
-
-
--- TODO: copied from Verification to avoid
--- cyclic dependency. Must be refactored
-classifyInfRule :: Base -> Ext -> InfRule
-                -> Either String InfRuleClass
-classifyInfRule base ext infRule =
-    classifyInfRulePB base ext infRule
-    `catchError`
-    (\msg1 -> (classifyInfRulePE base ext infRule)
-             `catchError`
-             (\msg2 ->
-                  (Left ("The rule " ++ (getInfRuleName infRule) ++
-                         "cannot be verified:\n" ++
-                         msg1 ++ "\n" ++ msg2))))
-
-classifyInfRulePB :: Base -> Ext -> InfRule
-                  -> Either String InfRuleClass
-classifyInfRulePB base ext infRule = do
-  let arities = getBaseArities base
-      forms = getBaseForms base
-      infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
-      InfRule judgsIR nameIR judgIR = infRule
-      (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX (judgsIR,judgIR)
-  when (not (all isRight (map (wfJudg arities forms) judgsIR')))
-           (Left $ "cannot be classified as B rule")
-  case derive (map Asm judgsIR') infRules judgIR' of
-    Right deriv' ->
-        if validate (map Asm judgsIR') infRules deriv' then
-            Right PB
-        else
-            error "Derivation for desugared conclusion from assumptions invalid"
-    Left msg -> Left $ nameIR ++
-                ": Desugared rule could not be derived: " ++
-                msg ++ " from: " ++ show (map Asm judgsIR')
-
-classifyInfRulePE :: Base -> Ext -> InfRule
-                  -> Either String InfRuleClass
-classifyInfRulePE base ext infRule = do
-  let arities = getBaseArities base
-      forms = getBaseForms base
-      infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
-      InfRule judgsIR nameIR judgIR = infRule
-      (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX
-                           (judgsIR,judgIR)
-  case derive (map Asm judgsIR) (infRules++infRulesX) judgIR' of
-    Right deriv' ->
-        if validate (map Asm judgsIR) (infRules++infRulesX) deriv' then
-            case deriv' of
-              Asm _ -> Left $ "Desugared conclusion in assumptions"
-              Deriv _ name _ ->
-                  case findInfRule infRules name of
-                    Nothing -> Left $ "Last node must be a base rule instantiation"
-                    Just _ -> Right PE
-        else
-            error "Derivation for desugared conclusion from assumptions invalid"
-    Left msg -> Left $ nameIR ++
-                ": Desugared rule could not be derived: " ++ msg

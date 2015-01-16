@@ -49,10 +49,8 @@ verify :: (t, Ext, [Ext]) -> IO ()
 verify (label,ext,exts) =
     D.verify ext exts baseST
 
-runTestSuite :: IO ()
-runTestSuite = do
-    runTestText (PutText (\line _ _ -> putStrLn line) ()) testSuite
-    return ()
+runTestSuite :: IO Counts
+runTestSuite = runTestTT testSuite
 
 testSuite :: Test
 testSuite =
@@ -92,7 +90,7 @@ testCasesWfMod = [
  testM05,
  testM06,
  testM07,
- -- testM08,
+ testM08,
  testM09,
  testM10,
  testM11,
@@ -238,18 +236,18 @@ testM07 = ("C: import A and B",
 -- module B
 -- import A // defines let extension
 -- // define or extension which uses let
--- testM08mod :: Mod
--- testM08mod = Mod (md modB
---                   (impcons (imp modA)
---                    impnil)
---                   dfnil)
---              extOr
--- testM08intf :: Intf
--- testM08intf = intf [testM05intf] testM08mod
--- testM08 :: (String, [Intf], Mod)
--- testM08 = ("B: defines or and uses let",
---            [testM05intf],
---            testM08mod)
+testM08mod :: Mod
+testM08mod = Mod (md modB
+                  (impcons (imp modA)
+                   impnil)
+                  dfnil)
+             extOr
+testM08intf :: Intf
+testM08intf = intf [testM05intf] testM08mod
+testM08 :: (String, [Intf], Mod)
+testM08 = ("B: defines or and uses let",
+           [testM05intf],
+           testM08mod)
 
 -- module B
 -- import A // defines let extension
@@ -301,7 +299,7 @@ testM12mod = Mod (md modC
                    (impcons (imp modB)
                     impnil))
                   dfnil)
-             (Ext aritiesLetstarP infRulesLetstarP [] grdRRsLetstarP)
+             (Ext aritiesLetstarP infRulesLetstarP [] resRRsLetstarP)
 testM12intf :: Intf
 testM12intf = intf [testM10intf,testM11intf] testM12mod
 testM12 :: (String, [Intf], Mod)
@@ -325,7 +323,7 @@ testMR01mod = Mod (md modA
                   dfnil)
               (Ext (aritiesLet++aritiesLetNat)
                        (infRulesLet++infRulesLetNat)
-                       univRRsLetNat grdRRsLet)
+                       univRRsLetNat resRRsLet)
 testMR01intf :: Intf
 testMR01intf = intf [] testMR01mod
 testMR01 :: (String, [a], Mod)
@@ -406,7 +404,7 @@ testCasesVerifyExtension :: [(String, Ext, [Ext])]
 testCasesVerifyExtension = [
  testX01,
  testX02,
- -- testX03,
+ testX03,
  testX04,
  testX05,
  testX06,
@@ -415,16 +413,15 @@ testCasesVerifyExtension = [
  testX09,
  testX10,
  testX11,
- testX12,
- testX13
+ testX12
  ]
 
 testX01 :: (String, Ext, [a])
 testX01 = ("Let",extLet,[])
 testX02 :: (String, Ext, [a])
 testX02 = ("NatPair",extNatPair,[])
--- testX03 :: (String, Ext, [Ext])
--- testX03 = ("Or",extOr,[extLet])
+testX03 :: (String, Ext, [Ext])
+testX03 = ("Or",extOr,[extLet])
 testX04 :: (String, Ext, [Ext])
 testX04 = ("Letfun1",extLetFun1,[extLet])
 testX05 :: (String, Ext, [a])
@@ -443,8 +440,6 @@ testX11 :: (String, Ext, [a])
 testX11 = ("LetNat",extLetNat,[])
 testX12 :: (String, Ext, [a])
 testX12 = ("extEmpty",extEmpty,[])
-testX13 :: (String, Ext, [a])
-testX13 = ("extLetstarP",extLetstarP,[])
 
 -- Rejected extensions
 
@@ -455,17 +450,17 @@ testCasesRejectExtension = [
  testR03,
  testR04,
  testR05,
--- testR06,
+ testR06,
  testR07
  ]
 
 testR01 :: (String, Ext, [a])
 testR01 = ("LetWrong1",
-           Ext aritiesLet infRulesLetWrong1 [] grdRRsLetWrong1,
+           Ext aritiesLet infRulesLetWrong1 [] resRRsLetWrong1,
            [])
 testR02 :: (String, Ext, [a])
 testR02 = ("LetWrong2",
-           Ext aritiesLet infRulesLetWrong2 [] grdRRsLetWrong2,
+           Ext aritiesLet infRulesLetWrong2 [] resRRsLetWrong2,
            [])
 testR03 :: (String, Ext, [a])
 testR03 = ("LetstarNNWrong",extLetstarNNWrong,[])
@@ -473,8 +468,8 @@ testR04 :: (String, Ext, [a])
 testR04 = ("LetAnnoWrong1",extLetAnnoWrong1,[])
 testR05 :: (String, Ext, [a])
 testR05 = ("LetAnnoWrong2",extLetAnnoWrong2,[])
--- testR06 :: (String, Ext, [a])
--- testR06 = ("LetstarPWrong",extLetstarP,[])
+testR06 :: (String, Ext, [a])
+testR06 = ("LetstarPWrong",extLetstarP,[])
 testR07 :: (String, Ext, [a])
 testR07 = ("extWhere",extWhere,[])
 
@@ -499,7 +494,7 @@ testCasesDeriveDesugar = [
  test12,
  test13,
  test14,
- -- test15,
+ test15,
  test16,
  test17,
  test18,
@@ -507,9 +502,8 @@ testCasesDeriveDesugar = [
  test20,
  test21,
  test22,
- test27,
- test28,
- test29,
+ -- test27,
+ -- test28,
  test30,
  test31,
  test32,
@@ -636,11 +630,11 @@ test14 =
      [extNatPair,extLet],
      tj envnil (tmlet evA (tmnatpair tmnum tmnum) (tmnatfst (tmvar evA))) vU)
 
--- test15 :: (String, [Ext], Judg)
--- test15 =
---     ("test15",
---      [extOr,extLet],
---      tj (envtm envnil evA tybool) (tmor tmtrue (tmvar evA)) vU)
+test15 :: (String, [Ext], Judg)
+test15 =
+    ("test15",
+     [extOr,extLet],
+     tj (envtm envnil evA tybool) (tmor tmtrue (tmvar evA)) vU)
 
 test16 :: (String, [Ext], Judg)
 test16 =
@@ -756,12 +750,11 @@ test28 =
 
 -- This one fails during desugaring. But extension is not
 -- accepted during verification
-test29 :: (String, [Ext], Judg)
-test29 =
-    ("test29",
-     [extLetstarP],
-     tj envnil (tmletstar
-                (bdgpair evA evB (tmpair tmnum tmnum) bdgnil) (tmvar evB)) vU)
+-- test29 =
+--     ("test29",
+--      [extLetstarP],
+--      tj envnil (tmletstar
+--                 (bdgpair evA evB (tmpair tmnum tmnum) bdgnil) (tmvar evB)) vU)
 
 test30 :: (String, [Ext], Judg)
 test30 =

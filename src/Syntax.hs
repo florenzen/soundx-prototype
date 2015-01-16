@@ -37,12 +37,12 @@ data InfRule = InfRule {getInfRuleJudgsP::[Judg],
 data UnivRR = UnivRR {getUnivRRLhs::Expr,
                       getUnivRRRhs::Expr}
             deriving Eq
-data GrdRR = GrdRR {getGrdRRJudgsP::[Judg],
-                    getGrdRRExprs1::[Expr],
-                    getGrdRRExpr::Expr,
-                    getGrdRRExprs2::[Expr],
-                    getGrdRRName::Name,
-                    getGrdRRRhs::Expr}
+data ResRR = ResRR {getResRRJudgsP::[Judg],
+                    getResRRExprs1::[Expr],
+                    getResRRExpr::Expr,
+                    getResRRExprs2::[Expr],
+                    getResRRName::Name,
+                    getResRRRhs::Expr}
            deriving Eq
 data Deriv = Deriv {getDerivSubs::[Deriv],
                     getDerivName::Name,
@@ -74,14 +74,13 @@ data Base = Base {getBaseArities::[Arity],
 data Ext = Ext {getExtArities::[Arity],
                 getExtInfRules::[InfRule],
                 getExtUnivRRs::[UnivRR],
-                getExtGrdRRs::[GrdRR]}
+                getExtResRRs::[ResRR]}
          deriving Eq
 data Mod = Mod {getModExpr::Expr,
                 getModExt::Ext}
 data Intf = Intf {getIntfId::Expr,
                   getIntfExpr::Expr,
                   getIntfExts::[Ext]}
-data InfRuleClass = PB | PE deriving (Show, Eq)
 
 concl :: Deriv -> Judg
 concl (Deriv derivs name judg) = judg
@@ -104,8 +103,8 @@ instance Show InfRule where
 instance Show UnivRR where
     show (UnivRR expr expr') =
         show expr ++ "~~~>" ++ show expr'
-instance Show GrdRR where
-    show (GrdRR judgs exprs1 expr exprs2 name expr') =
+instance Show ResRR where
+    show (ResRR judgs exprs1 expr exprs2 name expr') =
         "(" ++ showList " ∧ " judgs ++ " ==> " ++
                 "(" ++ showList "," exprs1 ++
                 ",[" ++ show expr ++ "]," ++
@@ -115,13 +114,13 @@ instance Show Arity where
     show (Arity name names name0) =
         name ++ ": " ++ show names ++ " -> " ++ name0
 instance Show Ext where
-    show (Ext arities infRules univRRs grdRRs) =
+    show (Ext arities infRules univRRs resRRs) =
         "Arities:" +%+
         showList "\n  " arities +%+
         "Inference rules:" +%+
         showList "\n  " infRules +%+
         "Restricted desugaring:" +%+
-        showList "\n  " grdRRs +%+
+        showList "\n  " resRRs +%+
         "Universal desugarings:" +%+
         showList "\n  " univRRs
 instance Show Intf where

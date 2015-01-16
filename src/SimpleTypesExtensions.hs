@@ -23,15 +23,15 @@ infRulesLet = [
              (tj vC (tmlet vx vt1 vt2) vT2)
  ]
 
-grdRRsLet :: [GrdRR]
-grdRRsLet = [
-  GrdRR [tj vC vt1 vT1, tj (envtm vC vx vT1) vt2 vT2]
+resRRsLet :: [ResRR]
+resRRsLet = [
+  ResRR [tj vC vt1 vT1, tj (envtm vC vx vT1) vt2 vT2]
         [vC] (tmlet vy vs1 vs2) [vT2] "TJ"
      (tmapp (tmabs vy vT1 vs2) vs1)
  ]
 
 extLet :: Ext
-extLet = Ext aritiesLet infRulesLet [] grdRRsLet
+extLet = Ext aritiesLet infRulesLet [] resRRsLet
 
 -- Let nat extension which syntactically overlaps with let
 
@@ -84,21 +84,21 @@ infRulesLetstar = [
               (tj vC (tmletstar (bdgcons vx vt1 bdgnil) vt2) vT2)
  ]
 
-grdRRsLetstar :: [GrdRR]
-grdRRsLetstar = [
-  GrdRR [tj vC vt1 vT1, tj (envtm vC vx vT1)
+resRRsLetstar :: [ResRR]
+resRRsLetstar = [
+  ResRR [tj vC vt1 vT1, tj (envtm vC vx vT1)
           (tmletstar vBs vt2) vT2]
         [vC]
           (tmletstar (bdgcons vx vt1 vBs) vt2)
           [vT] "TJ"
     (tmapp (tmabs vx vT1 (tmletstar vBs vt2)) vt1),
-  GrdRR [tj vC vt1 vT1, tj (envtm vC vx vT1) vt2 vT2]
+  ResRR [tj vC vt1 vT1, tj (envtm vC vx vT1) vt2 vT2]
         [vC] (tmletstar (bdgcons vx vt1 bdgnil) vt2) [vT] "TJ"
     (tmapp (tmabs vx vT1 vt2) vt1)
  ]
 
 extLetstar :: Ext
-extLetstar = Ext aritiesLetstar infRulesLetstar [] grdRRsLetstar
+extLetstar = Ext aritiesLetstar infRulesLetstar [] resRRsLetstar
 
 
 -- letstar using let extension
@@ -128,23 +128,23 @@ infRulesLetstarBL = [
               (tj vC (tmletstarbl (bdgconsbl vx vt1 bdgnilbl) vt2) vT2)
  ]
 
-grdRRsLetstarBL :: [GrdRR]
-grdRRsLetstarBL = [
-  GrdRR [tj vC vt1 vT1, tj (envtm vC vx vT1)
+resRRsLetstarBL :: [ResRR]
+resRRsLetstarBL = [
+  ResRR [tj vC vt1 vT1, tj (envtm vC vx vT1)
           (tmletstarbl vBBLs vt2) vT2]
         [vC]
           (tmletstarbl (bdgconsbl vx vt1 vBBLs) vt2)
           [vT] "TJ"
     (tmlet vx vt1 (tmletstarbl vBBLs vt2)),
     -- (tmapp (tmabs vx vT1 (tmletstar vBs vt2)) vt1),
-  GrdRR [tj vC vt1 vT1, tj (envtm vC vx vT1) vt2 vT2]
+  ResRR [tj vC vt1 vT1, tj (envtm vC vx vT1) vt2 vT2]
         [vC] (tmletstarbl (bdgconsbl vx vt1 bdgnilbl) vt2) [vT] "TJ"
     (tmlet vx vt1 vt2)
     -- (tmapp (tmabs vx vT1 vt2) vt1)
  ]
 
 extLetstarBL :: Ext
-extLetstarBL = Ext aritiesLetstarBL infRulesLetstarBL [] grdRRsLetstarBL
+extLetstarBL = Ext aritiesLetstarBL infRulesLetstarBL [] resRRsLetstarBL
 
 
 -- NatPair extension
@@ -172,8 +172,8 @@ infRulesNatPair = [
           tj (envtm vC evG (tyfun tynat (tyfun tynat tynat))) vt2 tynat
          ] "T-NatPair"
          (tj vC (tmnatpair vt1 vt2) tynatpair),
- InfRule [tj vC vt tynatpair
-          -- fj evG2 vC -- necessary to weaken away variable g2
+ InfRule [tj vC vt tynatpair,
+          fj evG2 vC -- necessary to weaken away variable g2
          ] "T-NatFst"
          (tj vC (tmnatfst vt) tynat),
  InfRule [tj vC vt tynatpair] "T-NatSnd"
@@ -204,28 +204,27 @@ extNatPair = Ext aritiesNatPair infRulesNatPair univRRsNatPair []
 
 -- Or extension
 
--- not possible w/o weakening rule
--- aritiesOr :: [Arity]
--- aritiesOr = [Arity "or" ["Term","Term"] "Term"]
+aritiesOr :: [Arity]
+aritiesOr = [Arity "or" ["Term","Term"] "Term"]
 
--- tmor :: Expr -> Expr -> Expr
--- tmor tm1 tm2 = ECon "or" [tm1,tm2]
+tmor :: Expr -> Expr -> Expr
+tmor tm1 tm2 = ECon "or" [tm1,tm2]
 
--- infRulesOr :: [InfRule]
--- infRulesOr = [
---  InfRule [tj vC vt1 tybool, tj vC vt2 tybool] "T-Or" --, fj vy vC] "T-Or"
---          (tj vC (tmor vt1 vt2) tybool)
---  ]
+infRulesOr :: [InfRule]
+infRulesOr = [
+ InfRule [tj vC vt1 tybool, tj vC vt2 tybool, fj vy vC] "T-Or"
+         (tj vC (tmor vt1 vt2) tybool)
+ ]
 
--- grdRRsOr :: [GrdRR]
--- grdRRsOr = [
---   GrdRR [tj vC vt1 tybool, tj vC vt2 tybool, fj vy vC]
---         [vC] (tmor vt1 vt2) [vT] "TJ"
---     (tmlet vy vt1 (tmif (tmvar vy) tmtrue vt2))
---  ]
+resRRsOr :: [ResRR]
+resRRsOr = [
+  ResRR [tj vC vt1 tybool, tj vC vt2 tybool, fj vy vC]
+        [vC] (tmor vt1 vt2) [vT] "TJ"
+    (tmlet vy vt1 (tmif (tmvar vy) tmtrue vt2))
+ ]
 
--- extOr :: Ext
--- extOr = Ext aritiesOr infRulesOr [] grdRRsOr
+extOr :: Ext
+extOr = Ext aritiesOr infRulesOr [] resRRsOr
 
 
 -- LetFun1 extension
@@ -327,11 +326,12 @@ typair ty = ECon "Pair" [ty]
 
 infRulesPair :: [InfRule]
 infRulesPair = [
- InfRule [tj vC vt1 vT,
-          tj vC vt2 vT
+ InfRule [tj (envtm vC evG (tyfun vT (tyfun vT vT))) vt1 vT,
+          tj (envtm vC evG (tyfun vT (tyfun vT vT))) vt2 vT
          ] "T-Pair"
          (tj vC (tmpair vt1 vt2) (typair vT)),
- InfRule [tj vC vt (typair vT)
+ InfRule [tj vC vt (typair vT),
+          fj evG2 vC -- necessary to weaken away variable g2
          ] "T-Fst"
          (tj vC (tmfst vt) vT),
  InfRule [tj vC vt (typair vT)] "T-Snd"
@@ -343,29 +343,24 @@ univRRsPair = [
  UnivRR (typair vT) (tyfun (tyfun vT (tyfun vT vT)) vT)
  ]
 
-grdRRsPair :: [GrdRR]
-grdRRsPair = [
- GrdRR [tj vC vt1 vT, -- (envtm vC evG (tyfun vT (tyfun vT vT))) vt1 vT,
-        tj vC vt2 vT] -- (envtm vC evG (tyfun vT (tyfun vT vT))) vt2 vT]
+resRRsPair :: [ResRR]
+resRRsPair = [
+ ResRR [tj (envtm vC evG (tyfun vT (tyfun vT vT))) vt1 vT,
+        tj (envtm vC evG (tyfun vT (tyfun vT vT))) vt2 vT]
        [vC] (tmpair vt1 vt2) [vS] "TJ" -- [typair vT] -- see [Note 1]
-   (tmapp (tmapp (tmabs evA vT
-                  (tmabs evB vT
-                   (tmabs evC (tyfun vT (tyfun vT vT))
-                    (tmapp (tmapp (tmvar evC) (tmvar evA))
-                               (tmvar evB))))) vt1) vt2),
-   -- (tmabs evG (tyfun vT (tyfun vT vT))
-   --  (tmapp (tmapp (tmvar evG) vt1) vt2)),
- GrdRR [tj vC vt vS] --(typair vT), -- see [Note 1]
-       -- fj evG2 vC]
+   (tmabs evG (tyfun vT (tyfun vT vT))
+    (tmapp (tmapp (tmvar evG) vt1) vt2)),
+ ResRR [tj vC vt vS, --(typair vT), -- see [Note 1]
+       fj evG2 vC]
        [vC] (tmfst vt) [vT] "TJ"
    (tmapp vt (tmabs evG1 vT (tmabs evG2 vT (tmvar evG1)))),
- GrdRR [tj vC vt vS] --(typair vT)] -- see [Note 1]
+ ResRR [tj vC vt vS] --(typair vT)] -- see [Note 1]
        [vC] (tmsnd vt) [vT] "TJ"
    (tmapp vt (tmabs evG1 vT (tmabs evG2 vT (tmvar evG2))))
  ]
 
 extPair :: Ext
-extPair = Ext aritiesPair infRulesPair univRRsPair grdRRsPair
+extPair = Ext aritiesPair infRulesPair univRRsPair resRRsPair
 
 -- Pattern matching for pairs in let*
 
@@ -380,24 +375,19 @@ bdgpair x y tm bdg = ECon "bdgpair" [x,y,tm,bdg]
 infRulesLetstarP :: [InfRule]
 infRulesLetstarP = [
   InfRule [tj vC vt1 (typair vT1),
-           neq vx vy,
-           -- fj evG2 vC,
+           fj evG2 vC,
            tj (envtm (envtm vC vx vT1) vy vT1)
            (tmletstar vBs vt2) vT2] "T-Let*PCons"
           (tj vC (tmletstar (bdgpair vx vy vt1 vBs) vt2) vT2),
   InfRule [tj vC vt1 (typair vT1),
-           neq vx vy,
-           -- fj evG2 vC,
+           fj evG2 vC,
            tj (envtm (envtm vC vx vT1) vy vT1) vt2 vT2] "T-Let*PLast"
           (tj vC (tmletstar (bdgpair vx vy vt1 bdgnil) vt2) vT2)
  ]
 
-grdRRsLetstarP :: [GrdRR]
-grdRRsLetstarP = [
-  GrdRR [tj vC vt1 (typair vT1),
-         -- fj evG2 vC,
-         neq vx vy,
-         tj (envtm (envtm vC vx vT1) vy vT1)
+resRRsLetstarP :: [ResRR]
+resRRsLetstarP = [
+  ResRR [tj vC vt1 (typair vT1), fj evG2 vC, tj (envtm (envtm vC vx vT1) vy vT1)
           (tmletstar vBs vt2) vT2]
         [vC]
           (tmletstar (bdgpair vx vy vt1 vBs) vt2)
@@ -407,10 +397,7 @@ grdRRsLetstarP = [
       (tmabs vx vT1 (tmabs vy vT1 (tmletstar vBs vt2)))
        (tmfst vt1))
      (tmsnd vt1)),
-  GrdRR [tj vC vt1 (typair vT1),
-         -- fj evG2 vC,
-         neq vx vy,
-         tj (envtm (envtm vC vx vT1) vy vT1) vt2 vT2]
+  ResRR [tj vC vt1 (typair vT1), fj evG2 vC, tj (envtm (envtm vC vx vT1) vy vT1) vt2 vT2]
         [vC] (tmletstar (bdgpair vx vy vt1 bdgnil) vt2) [vT] "TJ"
     (tmapp (tmapp (tmabs vx vT1 (tmabs vy vT1 vt2)) (tmfst vt1)) (tmsnd vt1))
  ]
@@ -419,7 +406,7 @@ extLetstarP :: Ext
 extLetstarP = Ext (aritiesLetstar ++ aritiesLetstarP ++ aritiesPair)
               (infRulesLetstar ++ infRulesLetstarP ++ infRulesPair)
               univRRsPair
-              (grdRRsLetstar ++ grdRRsLetstarP ++ grdRRsPair)
+              (resRRsLetstar ++ resRRsLetstarP ++ resRRsPair)
 
 
 -- where with multiple bindings using letstar in _one_ extension
@@ -448,7 +435,7 @@ univRRsWhere = [
 
 extWhere :: Ext
 extWhere = Ext (aritiesWhere++aritiesLetstar) (infRulesWhere++infRulesLetstar)
-    univRRsWhere grdRRsLetstar
+    univRRsWhere resRRsLetstar
 
 -- -----------------------------------------------------------------------------
 -- Wrong extensions
@@ -460,9 +447,9 @@ infRulesLetWrong1 = [
              (tj vC (tmlet vx vt1 vt2) vT2)
  ]
 
-grdRRsLetWrong1 :: [GrdRR]
-grdRRsLetWrong1 = [
-  GrdRR [tj vC vt1 vT1, tj (envtm vC vx vT1) vt2 vT2]
+resRRsLetWrong1 :: [ResRR]
+resRRsLetWrong1 = [
+  ResRR [tj vC vt1 vT1, tj (envtm vC vx vT1) vt2 vT2]
         [vC] (tmlet vx vt1 vt2) [vT2] "TJ"
       (tmapp (tmabs vx vT1 vt1) vt2) -- vt1 and vt2 swapped
  ]
@@ -473,9 +460,9 @@ infRulesLetWrong2 = [
              (tj vC (tmlet vx vt1 vt2) vT2)                   -- vx in environment
  ]
 
-grdRRsLetWrong2 :: [GrdRR]
-grdRRsLetWrong2 = [
-  GrdRR [tj vC vt1 vT1, tj (envtm vC vx vT2) vt2 vT2]
+resRRsLetWrong2 :: [ResRR]
+resRRsLetWrong2 = [
+  ResRR [tj vC vt1 vT1, tj (envtm vC vx vT2) vt2 vT2]
         [vC] (tmlet vx vt1 vt2) [vT2] "TJ"
     (tmapp (tmabs vx vT1 vt2) vt1)
  ]
@@ -486,9 +473,9 @@ infRulesLetWrong3 = [
              (tj vC (tmlet vx vt1 vt2) vT2)
  ]
 
-grdRRsLetWrong3 :: [GrdRR]
-grdRRsLetWrong3 = [
-  GrdRR [tj vC vt1 vT1, tj vC vt2 vT2]
+resRRsLetWrong3 :: [ResRR]
+resRRsLetWrong3 = [
+  ResRR [tj vC vt1 vT1, tj vC vt2 vT2]
         [vC] (tmlet vx vt1 vt2) [vT2] "TJ"
     (tmapp (tmabs vx vT1 vt2) vt1)
  ]
@@ -555,25 +542,25 @@ bdgnilNN = ECon "bdgnilNN" []
 infRulesLetstarNN :: [InfRule]
 infRulesLetstarNN = [
  InfRule [tj vC vt1 tynatpair,
-          -- fj evG2 vC,
+          fj evG2 vC,
           tj (envtm (envtm vC vx1 tynat) vx2 tynat)
-          (tmletstarNN (bdgconsNN vy1 vy2 vs1 vBNNs) vt2) vT2] "T-LetNN*Cons"
+          (tmletstarNN (bdgconsNN vy1 vy2 vs1 vBs) vt2) vT2] "T-LetNN*Cons"
          (tj vC (tmletstarNN (bdgconsNN vx1 vx2 vt1
-                              (bdgconsNN vy1 vy2 vs1 vBNNs)) vt2) vT2),
+                              (bdgconsNN vy1 vy2 vs1 vBs)) vt2) vT2),
  InfRule [tj vC vt1 tynatpair,
-          -- fj evG2 vC,
+          fj evG2 vC,
           tj (envtm (envtm vC vx1 tynat) vx2 tynat) vt2 vT2] "T-LetNN*Last"
              (tj vC (tmletstarNN (bdgconsNN vx1 vx2 vt1 bdgnilNN) vt2) vT2)
  ]
 
 univRRsLetstarNN :: [UnivRR]
 univRRsLetstarNN = [
-  UnivRR (tmletstarNN (bdgconsNN vx1 vx2 vt1 (bdgconsNN vy1 vy2 vs1 vBNNs)) vt2)
+  UnivRR (tmletstarNN (bdgconsNN vx1 vx2 vt1 (bdgconsNN vy1 vy2 vs1 vBs)) vt2)
          (tmapp
           (tmapp
            (tmabs vx1 tynat
             (tmabs vx2 tynat
-             (tmletstarNN (bdgconsNN vy1 vy2 vs1 vBNNs) vt2)))
+             (tmletstarNN (bdgconsNN vy1 vy2 vs1 vBs) vt2)))
            (tmnatfst vt1))
           (tmnatsnd vt1)),
   UnivRR (tmletstarNN (bdgconsNN vx1 vx2 vt1 bdgnilNN) vt2)
@@ -604,25 +591,25 @@ univRRsRedefPlusU = [
 extRedefPlusU :: Ext
 extRedefPlusU = Ext [] [] univRRsRedefPlusU []
 
--- Redefine plus with guarded desugaring
-grdRRsRedefPlusR :: [GrdRR]
-grdRRsRedefPlusR = [
-  GrdRR [tj vC vt1 tynat, tj vC vt2 tynat]
+-- Redefine plus with restricted desugaring
+resRRsRedefPlusR :: [ResRR]
+resRRsRedefPlusR = [
+  ResRR [tj vC vt1 tynat, tj vC vt2 tynat]
         [vC] (tmadd vt1 vt2) [tynat] "TJ"
         vt1
  ]
 extRedefPlusR :: Ext
-extRedefPlusR = Ext [] [] [] grdRRsRedefPlusR
+extRedefPlusR = Ext [] [] [] resRRsRedefPlusR
 
 
 -- ~~~ Note 1 ~~~
--- If the vS in the three guarded desugarings
+-- If the vS in the three restricted desugarings
 -- below are replaced by the commented version (which stem
--- from the typing rules, the order in which the (univ. and guarded)
+-- from the typing rules, the order in which the (univ. and restr.)
 -- desugarings are applied is not irrelevant anymore. It only works
--- if the guarded are applied prior to the universal ones. The good
+-- if the restricted are applied prior to the universal ones. The good
 -- thing is that verification already detects this. The problem is
--- that the lhs of the guarded des. has `typair vT' in it which is
+-- that the lhs of the restr. des. has `typair vT' in it which is
 -- replaced by `tyfun vT ...' by the univ. des. Hence, the lhs does
 -- not fit anymore. Fortunately, we can rewrite the lhs since these
 -- positions are irrelevant for the right-hand side.

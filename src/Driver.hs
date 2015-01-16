@@ -2,6 +2,7 @@ module Driver where
 
 -- import Debug.Trace
 import Control.Monad
+import qualified Data.Set as S
 import Prelude hiding (mod)
 
 import Syntax
@@ -43,10 +44,10 @@ derive :: Bool -> [Ext] -> Base -> Judg -> IO ()
 derive tex exts base judg =
     let infRulesX = concatMap getExtInfRules exts
         infRules = getBaseInfRules base
-    in case D.derive [] (infRulesX ++ infRules) judg of
+    in case D.derive [] (infRulesX ++ infRules) [judg] (varsJudg judg) of
          Left msg ->
            putStrLn $ "ERROR:\n" ++ show msg
-         Right deriv -> do
+         Right [deriv] -> do
            putStrLn $ "OK:\n" ++ show (concl deriv)
            when tex (teXDerivations "deriv" [deriv])
 
@@ -55,17 +56,18 @@ deriveDesugar tex exts base judg =
     let infRulesX = concatMap getExtInfRules exts
         infRules = getBaseInfRules base
         infRulesAll = infRulesX ++ infRules in
-    case D.derive [] infRulesAll judg of
+    case D.derive [] infRulesAll [judg] (varsJudg judg) of
       Left msg ->
           putStrLn $ "ERROR:\n" ++ show msg
-      Right deriv -> do
+      Right [deriv] -> do
         putStrLn $ "OK:\n" ++ show (concl deriv)
         let deriv' = desugar base exts deriv
         putStrLn $ "*** successfully rewritten:\n" ++ show (concl deriv')
-        let deriveResult = D.derive [] infRules (concl deriv')
+        let deriveResult = D.derive [] infRules [concl deriv']
+                           S.empty
         case deriveResult of
           Left msg -> putStrLn "!!! CANNOT DERIVE DESUGARING RESULT IN B !!!"
-          Right deriv1 -> do
+          Right [deriv1] -> do
                     putStrLn "*** succssfully derived desugaring result"
                     when (deriv1 /= deriv')
                          (putStrLn $ "(BUT DERIVATIONS DIFFER:\n1" ++
