@@ -3,52 +3,97 @@ module WFBase where
 import Control.Monad
 import Control.Monad.Error
 import Data.Either.Utils
+import Data.Maybe
 
 import Syntax
 import Utils
 
-wfArities :: [Arity] -> Either String ()
-wfArities [] = return ()
-wfArities (Arity name names0 name0 : arities) = do
-  unless (not (name `elem` map getArityName arities))
-             (throwError "Duplicate constructor name")
-  wfArities arities
+wfSortDecls :: [SortDecl] -> Either String ()
+wfSortDecls [] = return ()
+wfSortDecls (SortDecl name stype : sdecls) = do
+  when (name `elem` map getSortDeclName sdecls)
+         (throwError $ "Duplicate sort name " ++ name)
+  wfSortDecls sdecls
 
-wfForms :: [Form] -> Either String ()
-wfForms [] = return ()
-wfForms (Form name names0 : forms) = do
-  unless (not (name `elem` map getFormName forms))
-             (throwError "Duplicate judgment name")
-  wfForms forms
+wfArities :: [SortDecl] -> [Arity] -> Either String ()
+wfArities sdecls [] = return ()
+wfArities sdecls (Arity name names0 name0 : arities) = do
+  when (name `elem` map getArityName arities)
+           (throwError "Duplicate constructor name")
+  stype0:stypes0 <-
+      mapM (\name ->
+            maybeToEither ("unknown sort in arity declaration " ++ name)
+            (findSortDecl sdecls name)) (name0:names0)
+  when (getSortDeclType stype0 == Lexical)
+         (throwError $ "result sort of constructor cannot be lexical for " ++ name)
+  wfArities sdecls arities
 
-wfExpr :: [Arity] -> Expr -> Either String Name
-wfExpr arities (EVar (Var name nameS)) = return nameS
-wfExpr arities (ECon name exprs) = do
+wfForms :: [SortDecl] -> [Form] -> Either String ()
+wfForms sdecls [] = return ()
+wfForms sdecls (Form name names0 : forms) = do
+  when (name `elem` map getFormName forms)
+           (throwError "Duplicate judgment name")
+  mapM_ (\name ->
+             maybeToEither ("unknown sort in form declaration " ++ name)
+             (findSortDecl sdecls name)) names0
+  wfForms sdecls forms
+
+wfExpr :: [SortDecl] -> [Arity] -> Expr -> Either String Name
+wfExpr sdecls arities (EVar (Var name nameS)) = do
+    sdecl <- maybeToEither ("unknown sort " ++ nameS ++ " in variable " ++ name)
+             (findSortDecl sdecls nameS)
+    return nameS
+wfExpr sdecls arities (ELex (Lex string nameS)) = do
+    sdecl <- maybeToEither ("unknown sort " ++ nameS ++ " in lexical constant " ++ string)
+             (findSortDecl sdecls nameS)
+    when (getSortDeclType sdecl /= Lexical)
+         (throwError $ "lexical constant " ++ string ++ " not of lexical type (sort " ++ nameS ++ ")")
+    return nameS
+wfExpr sdecls arities (ECon name exprs) = do
   Arity _ names name0 <- maybeToEither ("arity not found: " ++ name)
                          (findArity arities name)
-  namesS <- mapM (wfExpr arities) exprs
+  namesS <- mapM (wfExpr sdecls arities) exprs
   unless (namesS == names)
              (throwError $ "constructor applied to wrong arguments: " ++ name ++
              "\narity: " ++ show (Arity name names name) ++
              "\narguments: " ++ show namesS)
   return name0
 
-wfJudg :: [Arity] -> [Form] -> Judg -> Either String ()
-wfJudg arities forms (Judg exprs name) = do
+wfJudg :: [SortDecl] -> [Arity] -> [Form] -> Judg -> Either String ()
+wfJudg sdecls arities forms (Neq expr1 expr2) = do
+  nameS1 <- wfExpr sdecls arities expr1
+  nameS2 <- wfExpr sdecls arities expr2
+  when (nameS1 /= nameS2)
+             (throwError $ "sorts of Neq arguments must be the same: " ++
+              show expr1 ++ " /= " ++ show expr2)
+  let stype1 = getSortDeclType $ fromJust $ findSortDecl sdecls nameS1
+      stype2 = getSortDeclType $ fromJust $ findSortDecl sdecls nameS2
+  when (stype1 /= Lexical || stype2 /= Lexical)
+             (throwError $ "Neq only allowed for lexical sorts: " ++
+              show expr1 ++ " /= " ++ show expr2)
+wfJudg sdecls arities forms (Cat expr exprs) = do
+  nameS <- wfExpr sdecls arities expr
+  namesS <- mapM (wfExpr sdecls arities) exprs
+  unless (foldr (\name r -> r && name == nameS) True namesS)
+             (throwError $ "all arguments to Cat must be of the same sort")
+  let stypes = map (getSortDeclType . fromJust . findSortDecl sdecls) (nameS:namesS)
+  when (any (/= Lexical) stypes)
+           (throwError $ "Cat only allowed for lexical sorts")
+wfJudg sdecls arities forms (Judg exprs name) = do
   Form _ names <- maybeToEither ("form not found: " ++ name)
                   (findForm forms name)
-  namesS <- mapM (wfExpr arities) exprs
+  namesS <- mapM (wfExpr sdecls arities) exprs
   unless (namesS == names)
              (throwError $ "judgment applied to wrong arguments: " ++ name +%+
              show exprs)
 
-wfInfRules :: [Arity] -> [Form] -> [InfRule] -> Either String ()
-wfInfRules arities forms [] = return ()
-wfInfRules arities forms (InfRule judgs name judg : infRules) = do
+wfInfRules :: [SortDecl] -> [Arity] -> [Form] -> [InfRule] -> Either String ()
+wfInfRules sdecls arities forms [] = return ()
+wfInfRules sdecls arities forms (InfRule judgs name judg : infRules) = do
   when (name `elem` map getInfRuleName infRules)
            (throwError "Duplicate rule name")
-  mapM_ (wfJudg arities forms) (judg:judgs)
-  wfInfRules arities forms infRules
+  mapM_ (wfJudg sdecls arities forms) (judg:judgs)
+  wfInfRules sdecls arities forms infRules
 
 wfImpCons :: [Arity] -> Name -> Name -> [Name] -> Either String ()
 wfImpCons arities modIdSort impSort [] = return ()
@@ -63,7 +108,8 @@ wfImpCons arities modIdSort impSort (name:names) = do
 
 wfBase :: Base -> Either String ()
 wfBase base = do
-  let arities = getBaseArities base
+  let sdecls = getBaseSortDecls base
+      arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
 
@@ -84,11 +130,11 @@ wfBase base = do
 
   -- Basics
   -- Constructor arities and judgment forms
-  wfArities arities
-  wfForms forms
+  wfArities sdecls arities
+  wfForms sdecls forms
 
   -- Type system
-  wfInfRules arities forms infRules
+  wfInfRules sdecls arities forms infRules
 
   -- Module system
   -- Declaration of import constructors

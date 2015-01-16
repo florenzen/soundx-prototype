@@ -17,6 +17,9 @@ freshInfRuleSub varSet sub (InfRule judgs name judg) =
     in (sub1, InfRule judgs1 name judg1)
 
 freshJudg :: S.Set Var -> Sub -> Judg -> (Sub,Judg)
+freshJudg varSet sub (Neq expr1 expr2) =
+    let (sub1,[expr11,expr21]) = freshExprs varSet sub [expr1,expr2]
+    in (sub1, Neq expr11 expr21)
 freshJudg varSet sub (Judg exprs name) =
     let (sub1,exprs1) = freshExprs varSet sub exprs
     in (sub1, Judg exprs1 name)
@@ -36,6 +39,7 @@ freshExpr varSet sub (EVar var) =
 freshExpr varSet sub (ECon name exprs) =
     let (sub1,exprs1) = freshExprs varSet sub exprs
     in (sub1, ECon name exprs1)
+freshExpr varSet sub (ELex lex) = (sub, ELex lex)
 
 freshExprs :: S.Set Var -> Sub -> [Expr] -> (Sub,[Expr])
 freshExprs varSet sub exprs =
@@ -65,3 +69,13 @@ pickFreshVar varSet (Var name nameS) = pickFreshVarCount 0
               pickFreshVarCount (n+1)
           else
               Var (name ++ show n) nameS
+
+pickFreshLex :: S.Set Lex -> Lex -> Lex
+pickFreshLex lexSet (Lex string nameS) = pickFreshLexCount 0
+    where
+      pickFreshLexCount :: Integer -> Lex
+      pickFreshLexCount n =
+          if (Lex (string ++ show n) nameS `S.member` lexSet) then
+              pickFreshLexCount (n+1)
+          else
+              Lex (string ++ show n) nameS

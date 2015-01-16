@@ -8,57 +8,70 @@ import Variables
 
 -- Base system: ->, bool, nat
 
+sdeclsST :: [SortDecl]
+sdeclsST = [
+ SortDecl "ID" Lexical,
+ SortDecl "NAT" Lexical,
+ SortDecl "MID" Lexical,
+ SortDecl "Term" ContextFree,
+ SortDecl "Type" ContextFree,
+ SortDecl "Env" ContextFree,
+ SortDecl "Ids" ContextFree,
+ SortDecl "Defs" ContextFree,
+ SortDecl "Module" ContextFree,
+ SortDecl "Imports" ContextFree,
+ SortDecl "Import" ContextFree,
+ SortDecl "Rep" ContextFree
+ ]
 aritiesST :: [Arity]
 aritiesST = [
  Arity "∅" [] "Env",
- Arity "envtm" ["Env","Id","Type"] "Env",
- Arity "var" ["Id"] "Term",
+ Arity "envtm" ["Env","ID","Type"] "Env",
+ Arity "var" ["ID"] "Term",
  Arity "app" ["Term","Term"] "Term",
- Arity "abs" ["Id","Type","Term"] "Term",
+ Arity "abs" ["ID","Type","Term"] "Term",
  Arity "true" [] "Term",
  Arity "false" [] "Term",
  Arity "if" ["Term","Term","Term"] "Term",
- Arity "num" [] "Term",
+ Arity "num" ["NAT"] "Term",
  Arity "add" ["Term","Term"] "Term",
  Arity "Nat" [] "Type",
  Arity "Bool" [] "Type",
  Arity "Fun" ["Type","Type"] "Type",
 
  Arity "DefNil" [] "Defs",
- Arity "DefCons" ["Id","Term","Defs"] "Defs",
+ Arity "DefCons" ["ID","Term","Defs"] "Defs",
 
  Arity "IdNil" [] "Ids",
- Arity "IdCons" ["Id","Ids"] "Ids",
+ Arity "IdCons" ["ID","Ids"] "Ids",
 
- Arity "Module" ["MId","Imports","Defs"] "Module",
+ Arity "Module" ["MID","Imports","Defs"] "Module",
  Arity "ImportNil" [] "Imports",
  Arity "ImportCons" ["Import","Imports"] "Imports",
- Arity "Import" ["MId"] "Import",
- Arity "ImportOnly" ["MId", "Ids"] "Import",
+ Arity "Import" ["MID"] "Import",
+ Arity "ImportOnly" ["MID", "Ids"] "Import",
 
- Arity "RepCons" ["MId","Env","Rep"] "Rep",
+ Arity "RepCons" ["MID","Env","Rep"] "Rep",
  Arity "RepNil" [] "Rep"
- ] ++ aritiesId ++ aritiesMId
+ ]
 
 formsST :: [Form]
 formsST = [
- Form "FJ" ["Id","Env"],
+ Form "FJ" ["ID","Env"],
  Form "TJ" ["Env","Term","Type"],
- Form "neq" ["Id","Id"],
- Form "neqMId" ["MId","MId"],
  Form "SJ" ["Rep","Module","Env"],
  Form "UJ" ["Env","Env","Env"],
  Form "RJ" ["Env","Ids","Env"],
- Form "MJ" ["Id","Ids"],
- Form "NJ" ["Id","Ids"],
+ Form "MJ" ["ID","Ids"],
+ Form "NJ" ["ID","Ids"],
  Form "IJ" ["Rep","Imports","Env"],
  Form "DJ" ["Env","Defs","Env"],
- Form "LJ" ["MId","Env","Rep"]
+ Form "LJ" ["MID","Env","Rep"]
  ]
 
 baseST :: Base
-baseST = Base aritiesST formsST infRulesST
-         "Env" "MId" "Imports" "Import" "Module" "Rep"
+baseST = Base sdeclsST aritiesST formsST infRulesST
+         "Env" "MID" "Imports" "Import" "Module" "Rep"
          "Module" "ImportNil" "ImportCons" ["Import","ImportOnly"]
          "RepNil" "RepCons"
          "SJ"
@@ -101,8 +114,8 @@ tmfalse :: Expr
 tmfalse = ECon "false" []
 tmif :: Expr -> Expr -> Expr -> Expr
 tmif tm1 tm2 tm3 = ECon "if" [tm1,tm2,tm3]
-tmnum :: Expr
-tmnum = ECon "num" []
+tmnum :: Expr -> Expr
+tmnum n = ECon "num" [n]
 tmadd :: Expr -> Expr -> Expr
 tmadd tm1 tm2 = ECon "add" [tm1,tm2]
 
@@ -143,18 +156,18 @@ repnil = ECon "RepNil" []
 infRulesFJ :: [InfRule]
 infRulesFJ = [
  InfRule [] "F-Empty" (fj vx envnil),
- InfRule [neq vx vy, fj vx vC] "F-TmVar" (fj vx (envtm vC vy vT))
+ InfRule [Neq vx vy, fj vx vC] "F-TmVar" (fj vx (envtm vC vy vT))
  ]
 
 infRulesTJ :: [InfRule]
 infRulesTJ = [
  InfRule [] "T-Var" (tj (envtm vC vx vT) (tmvar vx) vT),
- InfRule [neq vx vy, tj vC (tmvar vx) vT] "T-Var1" (tj (envtm vC vy vS) (tmvar vx) vT),
+ InfRule [Neq vx vy, tj vC (tmvar vx) vT] "T-Var1" (tj (envtm vC vy vS) (tmvar vx) vT),
  InfRule [] "T-True" (tj vC tmtrue tybool),
  InfRule [] "T-False" (tj vC tmfalse tybool),
  InfRule [tj vC vt1 tybool, tj vC vt2 vT, tj vC vt3 vT] "T-If"
          (tj vC (tmif vt1 vt2 vt3) vT),
- InfRule [] "T-Nat" (tj vC tmnum tynat),
+ InfRule [] "T-Nat" (tj vC (tmnum vn) tynat),
  InfRule [tj (envtm vC vx vT1) vt vT2] "T-Abs"
    (tj vC (tmabs vx vT1 vt) (tyfun vT1 vT2)),
  InfRule [tj vC vt1 (tyfun vT1 vT2), tj vC vt2 vT1] "T-App"
@@ -175,9 +188,9 @@ infRulesMod = [
  --   ---------------------------
  --   mid:Γ ∈ mid1:Γ1,rep
  -- L-Found:
- --   ----
+ --   -----------------
  --   mid:Γ ∈ mid:Γ,rep
- InfRule [neqMId vmid vmid1, lj vmid vC vrep]
+ InfRule [Neq vmid vmid1, lj vmid vC vrep]
          "L-Next"
          (lj vmid vC (repcons vmid1 vC1 vrep)),
  InfRule [] "L-Found"
@@ -209,13 +222,13 @@ infRulesMod = [
  --   (x ∉ xs) (Γ ∣ xs = Γ1)
  --   ----------------------
  --   Γ,x:T ∣ xs = Γ1
- InfRule [] "R-Empty" (rj envnil vxs envnil),
- InfRule [mj vx vxs,
-          rj vC vxs vC1] "R-Member"
-         (rj (envtm vC vx vT) vxs (envtm vC1 vx vT)),
- InfRule [nj vx vxs,
-          rj vC vxs vC1] "R-NotMember"
-         (rj (envtm vC vx vT) vxs vC1),
+ -- InfRule [] "R-Empty" (rj envnil vxs envnil),
+ -- InfRule [mj vx vxs,
+ --          rj vC vxs vC1] "R-Member"
+ --         (rj (envtm vC vx vT) vxs (envtm vC1 vx vT)),
+ -- InfRule [nj vx vxs,
+ --          rj vC vxs vC1] "R-NotMember"
+ --         (rj (envtm vC vx vT) vxs vC1),
 
  -- MJ (membership judgment)
  -- M-Eq:
@@ -225,10 +238,10 @@ infRulesMod = [
  --   (x≠y) (x ∈ xs)
  --   --------------
  --   x ∈ y xs
- InfRule [] "M-Eq" (mj vx (idcons vx vxs)),
- InfRule [neq vx vy,
-          mj vx vxs] "M-Neq"
-         (mj vx (idcons vy vxs)),
+ -- InfRule [] "M-Eq" (mj vx (idcons vx vxs)),
+ -- InfRule [Neq vx vy,
+ --          mj vx vxs] "M-Neq"
+ --         (mj vx (idcons vy vxs)),
 
  -- NJ (not membership judgment)
  -- N-Nil:
@@ -238,10 +251,10 @@ infRulesMod = [
  --   (x≠y) (x ∉ xs)
  --   --------------
  --   x ∉ y xs
- InfRule [] "N-Nil" (nj vx idnil),
- InfRule [neq vx vy,
-          nj vx vxs] "N-Neq"
-         (nj vx (idcons vy vxs)),
+ -- InfRule [] "N-Nil" (nj vx idnil),
+ -- InfRule [Neq vx vy,
+ --          nj vx vxs] "N-Neq"
+ --         (nj vx (idcons vy vxs)),
 
  -- IJ (import judgment)
  -- I-Nil:
@@ -273,8 +286,8 @@ infRulesMod = [
  --   ---------------------------
  --   rep ⊢ module mid imps defs : Δ
  InfRule [ij vrep vimps vC,
-          dj vC vdfs vCD,
-          uj vC vCD vC1
+          dj vC vdfs vCD -- ,
+          -- uj vC vCD vC1
          ] "S-Module"
          (sj vrep (md vmid vimps vdfs) vCD),
 
@@ -296,5 +309,13 @@ infRulesMod = [
  ]
 
 infRulesST :: [InfRule]
-infRulesST = infRulesFJ ++ infRulesTJ ++ infRulesMod ++
-             infRulesNeq ++ infRulesNeqMId
+infRulesST = infRulesFJ ++ infRulesTJ ++ infRulesMod
+
+lid :: String -> Expr
+lid name = ELex (Lex name "ID")
+
+lmid :: String -> Expr
+lmid name = ELex (Lex name "MID")
+
+lnat :: String -> Expr
+lnat value = ELex (Lex value "NAT")

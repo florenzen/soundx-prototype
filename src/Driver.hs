@@ -1,15 +1,16 @@
 module Driver where
 
 -- import Debug.Trace
-import Control.Monad
-import Prelude hiding (mod)
+import           Control.Monad
+import           Prelude hiding (mod)
 
-import Syntax
-import qualified Derive as D
-import Rewrite
-import Validation
+import           Syntax
+import           qualified Derive as D
+import           Rewrite
+import           Validation
 import qualified Verification as V
-import WFMod
+import           WFMod
+import           WFExt
 import qualified CompileMod as C
 
 compileMod :: Bool -> Base -> [Intf] -> Mod -> IO ()
@@ -78,8 +79,11 @@ deriveDesugar tex exts base judg =
 
 verify :: Ext -> [Ext] -> Base -> IO ()
 verify ext exts base = do
-  case V.verify base exts ext of
-      Right () ->
-          putStrLn $ "*** extension verified"
-      Left msg ->
-          putStrLn $ "!!! EXTENSION  NOT VERIFIED:\n" ++ msg
+  case wfExt (foldl mergeBX base exts) ext of
+    Left msg -> putStrLn $ "!!! EXTENSION NOT WELLFORMED:\n" ++ msg
+    Right () ->
+        case V.verify base exts ext of
+          Right () ->
+              putStrLn $ "*** extension verified"
+          Left msg ->
+              putStrLn $ "!!! EXTENSION  NOT VERIFIED:\n" ++ msg

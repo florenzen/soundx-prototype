@@ -4,15 +4,17 @@ import Syntax
 import SimpleTypes
 import Variables
 
-
 -- -----------------------------------------------------------------------------
 -- Correct extensions
 -- -----------------------------------------------------------------------------
 
 -- Let extension
 
+sdeclsLet :: [SortDecl]
+sdeclsLet = []
+
 aritiesLet :: [Arity]
-aritiesLet = [Arity "let" ["Id","Term","Term"] "Term"]
+aritiesLet = [Arity "let" ["ID","Term","Term"] "Term"]
 
 tmlet :: Expr -> Expr -> Expr -> Expr
 tmlet x tm1 tm2 = ECon "let" [x,tm1,tm2]
@@ -31,12 +33,15 @@ grdRRsLet = [
  ]
 
 extLet :: Ext
-extLet = Ext aritiesLet infRulesLet [] grdRRsLet
+extLet = Ext sdeclsLet aritiesLet infRulesLet [] grdRRsLet
 
 -- Let nat extension which syntactically overlaps with let
 
+sdeclsLetNat :: [SortDecl]
+sdeclsLetNat = []
+
 aritiesLetNat :: [Arity]
-aritiesLetNat = [Arity "let" ["Id","Term","Term"] "Term"]
+aritiesLetNat = [Arity "let" ["ID","Term","Term"] "Term"]
 
 tmletNat :: Expr -> Expr -> Expr -> Expr
 tmletNat x tm1 tm2 = ECon "let" [x,tm1,tm2]
@@ -54,15 +59,19 @@ univRRsLetNat = [
  ]
 
 extLetNat :: Ext
-extLetNat = Ext aritiesLetNat infRulesLetNat univRRsLetNat []
+extLetNat = Ext sdeclsLetNat aritiesLetNat infRulesLetNat univRRsLetNat []
 
 
 -- letstar extension
 
+sdeclsLetstar :: [SortDecl]
+sdeclsLetstar = [
+ SortDecl "Bindings" ContextFree
+ ]
 aritiesLetstar :: [Arity]
 aritiesLetstar = [
  Arity "letstar" ["Bindings","Term"] "Term",
- Arity "bdgcons" ["Id","Term","Bindings"] "Bindings",
+ Arity "bdgcons" ["ID","Term","Bindings"] "Bindings",
  Arity "bdgnil" [] "Bindings"
  ]
 
@@ -98,15 +107,20 @@ grdRRsLetstar = [
  ]
 
 extLetstar :: Ext
-extLetstar = Ext aritiesLetstar infRulesLetstar [] grdRRsLetstar
+extLetstar = Ext sdeclsLetstar aritiesLetstar infRulesLetstar [] grdRRsLetstar
 
 
 -- letstar using let extension
 
+sdeclsLetstarBL :: [SortDecl]
+sdeclsLetstarBL = [
+ SortDecl "BindingsBL" ContextFree
+ ]
+
 aritiesLetstarBL :: [Arity]
 aritiesLetstarBL = [
  Arity "letstarbl" ["BindingsBL","Term"] "Term",
- Arity "bdgconsbl" ["Id","Term","BindingsBL"] "BindingsBL",
+ Arity "bdgconsbl" ["ID","Term","BindingsBL"] "BindingsBL",
  Arity "bdgnilbl" [] "BindingsBL"
  ]
 
@@ -144,10 +158,13 @@ grdRRsLetstarBL = [
  ]
 
 extLetstarBL :: Ext
-extLetstarBL = Ext aritiesLetstarBL infRulesLetstarBL [] grdRRsLetstarBL
+extLetstarBL = Ext sdeclsLetstarBL aritiesLetstarBL infRulesLetstarBL [] grdRRsLetstarBL
 
 
 -- NatPair extension
+
+sdeclsNatPair :: [SortDecl]
+sdeclsNatPair = []
 
 aritiesNatPair :: [Arity]
 aritiesNatPair = [
@@ -168,8 +185,8 @@ tynatpair = ECon "NatPair" []
 
 infRulesNatPair :: [InfRule]
 infRulesNatPair = [
- InfRule [tj (envtm vC evG (tyfun tynat (tyfun tynat tynat))) vt1 tynat,
-          tj (envtm vC evG (tyfun tynat (tyfun tynat tynat))) vt2 tynat
+ InfRule [tj (envtm vC (lid "g") (tyfun tynat (tyfun tynat tynat))) vt1 tynat,
+          tj (envtm vC (lid "g") (tyfun tynat (tyfun tynat tynat))) vt2 tynat
          ] "T-NatPair"
          (tj vC (tmnatpair vt1 vt2) tynatpair),
  InfRule [tj vC vt tynatpair
@@ -189,18 +206,18 @@ univRRsNatPair = [
  UnivRR tynatpair (tyfun (tyfun tynat (tyfun tynat tynat)) tynat),
 
  UnivRR (tmnatpair vt1 vt2)
-        (tmabs evG (tyfun tynat (tyfun tynat tynat))
-         (tmapp (tmapp (tmvar evG) vt1) vt2)),
+        (tmabs (lid "g") (tyfun tynat (tyfun tynat tynat))
+         (tmapp (tmapp (tmvar (lid "g")) vt1) vt2)),
 
  UnivRR (tmnatfst vt1)
-        (tmapp vt1 (tmabs evG1 tynat (tmabs evG2 tynat (tmvar evG1)))),
+        (tmapp vt1 (tmabs (lid "g1") tynat (tmabs (lid "g2") tynat (tmvar (lid "g1"))))),
 
  UnivRR (tmnatsnd vt1)
-        (tmapp vt1 (tmabs evG1 tynat (tmabs evG2 tynat (tmvar evG2))))
+        (tmapp vt1 (tmabs (lid "g1") tynat (tmabs (lid "g2") tynat (tmvar (lid "g2")))))
  ]
 
 extNatPair :: Ext
-extNatPair = Ext aritiesNatPair infRulesNatPair univRRsNatPair []
+extNatPair = Ext sdeclsNatPair aritiesNatPair infRulesNatPair univRRsNatPair []
 
 -- Or extension
 
@@ -231,8 +248,11 @@ extNatPair = Ext aritiesNatPair infRulesNatPair univRRsNatPair []
 -- LetFun1 extension
 -- let f x = e1 in e1
 
+sdeclsLetFun1 :: [SortDecl]
+sdeclsLetFun1 = []
+
 aritiesLetFun1 :: [Arity]
-aritiesLetFun1 = [Arity "letfun1" ["Id","Id","Type","Term","Term"] "Term"]
+aritiesLetFun1 = [Arity "letfun1" ["ID","ID","Type","Term","Term"] "Term"]
 
 tmletfun1 :: Expr -> Expr -> Expr -> Expr -> Expr -> Expr
 tmletfun1 x y ty tm1 tm2 = ECon "letfun1" [x,y,ty,tm1,tm2]
@@ -251,7 +271,7 @@ univRRsLetFun1 = [
  ]
 
 extLetFun1 :: Ext
-extLetFun1 = Ext aritiesLetFun1 infRulesLetFun1 univRRsLetFun1 []
+extLetFun1 = Ext sdeclsLetFun1 aritiesLetFun1 infRulesLetFun1 univRRsLetFun1 []
 
 -- Bogus extension
 
@@ -281,17 +301,18 @@ extLetFun1 = Ext aritiesLetFun1 infRulesLetFun1 univRRsLetFun1 []
 
 -- Double extension
 
+sdeclsDouble :: [SortDecl]
+sdeclsDouble = []
+
 aritiesDouble :: [Arity]
 aritiesDouble = [Arity "double" ["Term"] "Term"]
 
 tmdouble :: Expr -> Expr
 tmdouble tm = ECon "double" [tm]
 
--- The (fj vx vC) premise is unfortunate but the extension is not
--- verified otherwise.
 infRulesDouble :: [InfRule]
 infRulesDouble = [
- InfRule [tj (envtm vC evG (tyfun tynat (tyfun tynat tynat))) vt tynat
+ InfRule [tj (envtm vC (lid "g") (tyfun tynat (tyfun tynat tynat))) vt tynat
          ] "T-Double"
          (tj vC (tmdouble vt) tynatpair)
  ]
@@ -303,10 +324,13 @@ univRRsDouble = [
  ]
 
 extDouble :: Ext
-extDouble = Ext aritiesDouble infRulesDouble univRRsDouble []
+extDouble = Ext sdeclsDouble aritiesDouble infRulesDouble univRRsDouble []
 
 
--- "Polymorhic pairs"
+-- "Polymorphic pairs"
+
+sdeclsPair :: [SortDecl]
+sdeclsPair = []
 
 aritiesPair :: [Arity]
 aritiesPair = [
@@ -348,30 +372,33 @@ grdRRsPair = [
  GrdRR [tj vC vt1 vT, -- (envtm vC evG (tyfun vT (tyfun vT vT))) vt1 vT,
         tj vC vt2 vT] -- (envtm vC evG (tyfun vT (tyfun vT vT))) vt2 vT]
        [vC] (tmpair vt1 vt2) [vS] "TJ" -- [typair vT] -- see [Note 1]
-   (tmapp (tmapp (tmabs evA vT
-                  (tmabs evB vT
-                   (tmabs evC (tyfun vT (tyfun vT vT))
-                    (tmapp (tmapp (tmvar evC) (tmvar evA))
-                               (tmvar evB))))) vt1) vt2),
+   (tmapp (tmapp (tmabs (lid "a") vT
+                  (tmabs (lid "b") vT
+                   (tmabs (lid "c") (tyfun vT (tyfun vT vT))
+                    (tmapp (tmapp (tmvar (lid "c")) (tmvar (lid "a")))
+                               (tmvar (lid "b")))))) vt1) vt2),
    -- (tmabs evG (tyfun vT (tyfun vT vT))
    --  (tmapp (tmapp (tmvar evG) vt1) vt2)),
  GrdRR [tj vC vt vS] --(typair vT), -- see [Note 1]
        -- fj evG2 vC]
        [vC] (tmfst vt) [vT] "TJ"
-   (tmapp vt (tmabs evG1 vT (tmabs evG2 vT (tmvar evG1)))),
+   (tmapp vt (tmabs (lid "g1") vT (tmabs (lid "g2") vT (tmvar (lid "g1"))))),
  GrdRR [tj vC vt vS] --(typair vT)] -- see [Note 1]
        [vC] (tmsnd vt) [vT] "TJ"
-   (tmapp vt (tmabs evG1 vT (tmabs evG2 vT (tmvar evG2))))
+   (tmapp vt (tmabs (lid "g1") vT (tmabs (lid "g2") vT (tmvar (lid "g2")))))
  ]
 
 extPair :: Ext
-extPair = Ext aritiesPair infRulesPair univRRsPair grdRRsPair
+extPair = Ext sdeclsPair aritiesPair infRulesPair univRRsPair grdRRsPair
 
 -- Pattern matching for pairs in let*
 
+sdeclsLetstarP :: [SortDecl]
+sdeclsLetstarP = []
+
 aritiesLetstarP :: [Arity]
 aritiesLetstarP = [
- Arity "bdgpair" ["Id","Id","Term","Bindings"] "Bindings"
+ Arity "bdgpair" ["ID","ID","Term","Bindings"] "Bindings"
  ]
 
 bdgpair :: Expr -> Expr -> Expr -> Expr -> Expr
@@ -380,13 +407,13 @@ bdgpair x y tm bdg = ECon "bdgpair" [x,y,tm,bdg]
 infRulesLetstarP :: [InfRule]
 infRulesLetstarP = [
   InfRule [tj vC vt1 (typair vT1),
-           neq vx vy,
+           Neq vx vy,
            -- fj evG2 vC,
            tj (envtm (envtm vC vx vT1) vy vT1)
            (tmletstar vBs vt2) vT2] "T-Let*PCons"
           (tj vC (tmletstar (bdgpair vx vy vt1 vBs) vt2) vT2),
   InfRule [tj vC vt1 (typair vT1),
-           neq vx vy,
+           Neq vx vy,
            -- fj evG2 vC,
            tj (envtm (envtm vC vx vT1) vy vT1) vt2 vT2] "T-Let*PLast"
           (tj vC (tmletstar (bdgpair vx vy vt1 bdgnil) vt2) vT2)
@@ -396,7 +423,7 @@ grdRRsLetstarP :: [GrdRR]
 grdRRsLetstarP = [
   GrdRR [tj vC vt1 (typair vT1),
          -- fj evG2 vC,
-         neq vx vy,
+         Neq vx vy,
          tj (envtm (envtm vC vx vT1) vy vT1)
           (tmletstar vBs vt2) vT2]
         [vC]
@@ -409,20 +436,25 @@ grdRRsLetstarP = [
      (tmsnd vt1)),
   GrdRR [tj vC vt1 (typair vT1),
          -- fj evG2 vC,
-         neq vx vy,
+         Neq vx vy,
          tj (envtm (envtm vC vx vT1) vy vT1) vt2 vT2]
         [vC] (tmletstar (bdgpair vx vy vt1 bdgnil) vt2) [vT] "TJ"
     (tmapp (tmapp (tmabs vx vT1 (tmabs vy vT1 vt2)) (tmfst vt1)) (tmsnd vt1))
  ]
 
 extLetstarP :: Ext
-extLetstarP = Ext (aritiesLetstar ++ aritiesLetstarP ++ aritiesPair)
+extLetstarP = Ext (sdeclsLetstar ++ sdeclsLetstarP ++ sdeclsPair)
+              (aritiesLetstar ++ aritiesLetstarP ++ aritiesPair)
               (infRulesLetstar ++ infRulesLetstarP ++ infRulesPair)
               univRRsPair
               (grdRRsLetstar ++ grdRRsLetstarP ++ grdRRsPair)
 
 
 -- where with multiple bindings using letstar in _one_ extension
+
+sdeclsWhere :: [SortDecl]
+sdeclsWhere = []
+
 aritiesWhere :: [Arity]
 aritiesWhere = [
  Arity "where" ["Term","Bindings"] "Term"
@@ -447,8 +479,10 @@ univRRsWhere = [
  ]
 
 extWhere :: Ext
-extWhere = Ext (aritiesWhere++aritiesLetstar) (infRulesWhere++infRulesLetstar)
-    univRRsWhere grdRRsLetstar
+extWhere = Ext (sdeclsWhere++sdeclsLetstar)
+           (aritiesWhere++aritiesLetstar)
+           (infRulesWhere++infRulesLetstar)
+           univRRsWhere grdRRsLetstar
 
 -- -----------------------------------------------------------------------------
 -- Wrong extensions
@@ -494,8 +528,11 @@ grdRRsLetWrong3 = [
  ]
 
 
+sdeclsLetAnnoWrong :: [SortDecl]
+sdeclsLetAnnoWrong = []
+
 aritiesLetAnnoWrong :: [Arity]
-aritiesLetAnnoWrong = [Arity "letanno" ["Id","Type,","Term","Term"] "Term"]
+aritiesLetAnnoWrong = [Arity "letanno" ["ID","Type","Term","Term"] "Term"]
 
 tmletanno :: Expr -> Expr -> Expr -> Expr -> Expr
 tmletanno x ty tm1 tm2 = ECon "letanno" [x,ty,tm1,tm2]
@@ -513,7 +550,8 @@ univRRsLetAnnoWrong1 = [
  ]
 
 extLetAnnoWrong1 :: Ext
-extLetAnnoWrong1 = Ext aritiesLetAnnoWrong
+extLetAnnoWrong1 = Ext sdeclsLetAnnoWrong
+                   aritiesLetAnnoWrong
                    infRulesLetAnnoWrong1
                    univRRsLetAnnoWrong1
                    []
@@ -531,16 +569,21 @@ univRRsLetAnnoWrong2 = [
  ]
 
 extLetAnnoWrong2 :: Ext
-extLetAnnoWrong2 = Ext aritiesLetAnnoWrong
+extLetAnnoWrong2 = Ext sdeclsLetAnnoWrong
+                   aritiesLetAnnoWrong
                    infRulesLetAnnoWrong2
                    univRRsLetAnnoWrong2
                    []
 
 
+sdeclsLetstarNN :: [SortDecl]
+sdeclsLetstarNN = [
+ SortDecl "BindingsNN" ContextFree
+ ]
 aritiesLetstarNN :: [Arity]
 aritiesLetstarNN = [
  Arity "letstarNN" ["BindingsNN","Term"] "Term",
- Arity "bdgconsNN" ["Id","Id","Term","BindingsNN"] "BindingsNN",
+ Arity "bdgconsNN" ["ID","ID","Term","BindingsNN"] "BindingsNN",
  Arity "bdgnilNN" [] "BindingsNN"
  ]
 
@@ -586,6 +629,7 @@ univRRsLetstarNN = [
 
 extLetstarNNWrong :: Ext
 extLetstarNNWrong = Ext
+               (sdeclsLetstarNN++sdeclsNatPair)
                (aritiesLetstarNN++aritiesNatPair)
                (infRulesLetstarNN++infRulesNatPair)
                (univRRsLetstarNN++univRRsNatPair)
@@ -593,7 +637,7 @@ extLetstarNNWrong = Ext
 
 extLetstarNNValid :: Ext
 extLetstarNNValid =
-    Ext aritiesLetstarNN infRulesLetstarNN univRRsLetstarNN []
+    Ext sdeclsLetstarNN aritiesLetstarNN infRulesLetstarNN univRRsLetstarNN []
 
 
 -- Redefine plus with universal desugaring
@@ -602,7 +646,7 @@ univRRsRedefPlusU = [
   UnivRR (tmadd vt1 vt2) vt1
  ]
 extRedefPlusU :: Ext
-extRedefPlusU = Ext [] [] univRRsRedefPlusU []
+extRedefPlusU = Ext [] [] [] univRRsRedefPlusU []
 
 -- Redefine plus with guarded desugaring
 grdRRsRedefPlusR :: [GrdRR]
@@ -612,7 +656,7 @@ grdRRsRedefPlusR = [
         vt1
  ]
 extRedefPlusR :: Ext
-extRedefPlusR = Ext [] [] [] grdRRsRedefPlusR
+extRedefPlusR = Ext [] [] [] [] grdRRsRedefPlusR
 
 
 -- ~~~ Note 1 ~~~

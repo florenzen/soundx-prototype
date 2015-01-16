@@ -9,6 +9,11 @@ import Utils
 
 type Name = String
 
+data SortType = Lexical | ContextFree
+                deriving Eq
+data SortDecl = SortDecl {getSortDeclName::Name,
+                          getSortDeclType::SortType}
+              deriving Eq
 data Arity = Arity {getArityName::Name,
                     getArityArgs::[Name],
                     getArityRes::Name}
@@ -18,17 +23,25 @@ data Form = Form {getFormName::Name,
           deriving Eq
 data Var = Var {getVarName::Name,
                 getVarSort::Name}
+data Lex = Lex {getLexValue::String,
+                getLexSort::Name}
+         deriving (Ord,Eq)
 instance Ord Var where
     (Var name1 _) <= (Var name2 _) = name1 <= name2
 instance Eq Var where
     (Var name1 _) == (Var name2 _) = name1 == name2
 
 data Expr = EVar {getEVarVar::Var}
+          | ELex {getELexLex::Lex}
           | ECon {getEConName::Name,
                   getEConExprs::[Expr]}
           deriving (Ord,Eq)
 data Judg = Judg {getJudgExpr::[Expr],
                   getJudgName::Name}
+          | Neq {getNeqLhs::Expr,
+                 getNeRhs::Expr}
+          | Cat {getCatLhs::Expr,
+                 getCatRhs::[Expr]}
           deriving Eq
 data InfRule = InfRule {getInfRuleJudgsP::[Judg],
                         getInfRuleName::Name,
@@ -48,8 +61,10 @@ data Deriv = Deriv {getDerivSubs::[Deriv],
                     getDerivName::Name,
                     getDerivConcl::Judg}
            | Asm {getAsmConcl::Judg}
+           | Fail {getFailJudg::Judg}
            deriving Eq
-data Base = Base {getBaseArities::[Arity],
+data Base = Base {getBaseSortDecls::[SortDecl],
+                  getBaseArities::[Arity],
                   getBaseForms::[Form],
                   getBaseInfRules::[InfRule],
 
@@ -71,7 +86,8 @@ data Base = Base {getBaseArities::[Arity],
 
                   -- Signature judgment
                   getBaseSigJudg::Name}
-data Ext = Ext {getExtArities::[Arity],
+data Ext = Ext {getExtSortDecls::[SortDecl],
+                getExtArities::[Arity],
                 getExtInfRules::[InfRule],
                 getExtUnivRRs::[UnivRR],
                 getExtGrdRRs::[GrdRR]}
@@ -86,17 +102,28 @@ data InfRuleClass = PB | PE deriving (Show, Eq)
 concl :: Deriv -> Judg
 concl (Deriv derivs name judg) = judg
 concl (Asm judg) = judg
+concl (Fail judg) = judg
 
+instance Show SortType where
+    show Lexical = "LEX"
+    show ContextFree = "CF"
+instance Show SortDecl where
+    show (SortDecl name stype) = name ++ ":" ++ show stype
 instance Show Var where
     show (Var name nameS) = name -- ++ ":" ++ nameS
+instance Show Lex where
+    show (Lex str nameS) = str
 instance Show Expr where
     show (EVar var) = show var
     show (ECon name exprs) =
         name ++ "(" ++ showList "," exprs ++ ")"
+    show (ELex lex) = show lex
 instance Show Judg where
     show (Judg exprs name) =
         "(" ++ showList "," exprs ++ ")" ++
                 " " ++ name
+    show (Neq expr1 expr2) =
+        show expr1 ++ " |= " ++ show expr2
 instance Show InfRule where
     show (InfRule judgs name judg) =
         showList " ∧ " judgs ++
@@ -115,7 +142,9 @@ instance Show Arity where
     show (Arity name names name0) =
         name ++ ": " ++ show names ++ " -> " ++ name0
 instance Show Ext where
-    show (Ext arities infRules univRRs grdRRs) =
+    show (Ext sdecls arities infRules univRRs grdRRs) =
+        "Sort declaration:" +%+
+        showList "\n  " sdecls +%+
         "Arities:" +%+
         showList "\n  " arities +%+
         "Inference rules:" +%+
@@ -133,10 +162,11 @@ instance Show Deriv where
     show (Asm judg) = "<> => " ++ show judg
     show (Deriv judgs name judg) =
         show judgs ++ "=" ++ name ++ "=>" ++ show judg
+    show (Fail judg) = "!!! Could not derive " ++ show judg ++ " !!!"
 
 -- |The empty extension
 extEmpty :: Ext
-extEmpty = Ext [] [] [] []
+extEmpty = Ext [] [] [] [] []
 
 
 showList :: Show a => String -> [a] -> String
@@ -146,13 +176,15 @@ showList str list = concat (L.intersperse str (map show list))
 -- to a base system
 mergeBX :: Base -> Ext -> Base
 mergeBX base ext =
-    base{getBaseArities=getBaseArities base ++ getExtArities ext,
+    base{getBaseSortDecls=getBaseSortDecls base ++ getExtSortDecls ext,
+         getBaseArities=getBaseArities base ++ getExtArities ext,
          getBaseInfRules=getBaseInfRules base ++ getExtInfRules ext}
 
 -- |Return all variables of an expression
 varsExpr :: Expr -> S.Set Var
 varsExpr (EVar var) = S.singleton var
 varsExpr (ECon name exprs) = varsExprs exprs
+varsExpr (ELex lex) = S.empty
 
 -- |Return all variables of a list of expressions
 varsExprs :: [Expr] -> S.Set Var
@@ -163,6 +195,7 @@ varsExprs exprs =
 -- |Return all variables of a judgment
 varsJudg :: Judg -> S.Set Var
 varsJudg (Judg exprs name) = varsExprs exprs
+varsJudg (Neq expr1 expr2) = varsExpr expr1 `S.union` varsExpr expr2
 
 -- |Return all variables of a list of judgment
 varsJudgs :: [Judg] -> S.Set Var
@@ -179,12 +212,20 @@ varsDeriv :: Deriv -> S.Set Var
 varsDeriv (Deriv derivs name judg) =
     varsDerivs derivs `S.union` varsJudg judg
 varsDeriv (Asm judg) = varsJudg judg
+varsDeriv (Fail _) = S.empty
 
 varsDerivs :: [Deriv] -> S.Set Var
 varsDerivs derivs =
     foldr (\deriv varSet -> varsDeriv deriv `S.union` varSet)
           S.empty derivs
 
+findSortDecl :: [SortDecl] -> Name -> Maybe SortDecl
+findSortDecl [] name = Nothing
+findSortDecl (SortDecl name1 stype : sdecls) name =
+    if name1 == name then
+        Just $ SortDecl name1 stype
+    else
+        findSortDecl sdecls name
 
 findInfRule :: [InfRule] -> Name -> Maybe InfRule
 findInfRule [] name = Nothing

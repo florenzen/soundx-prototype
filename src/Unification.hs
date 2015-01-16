@@ -28,6 +28,15 @@ unifyJudg varSet (Judg exprs1 name1) (Judg exprs2 name2) =
                   show (Judg exprs1 name1) ++ " = " ++
                   show (Judg exprs2 name2)
         in te msg
+unifyJudg varSet (Neq expr11 expr12) (Neq expr21 expr22) =
+    unifyExprs varSet [(expr11,expr21),(expr12,expr22)]
+unifyJudg varSet (Cat expr1 exprs1) (Cat expr2 exprs2) =
+    unifyExprs varSet (zip (expr1:exprs1) (expr2:exprs2))
+unifyJudg varSet judg1 judg2 =
+    let msg = "Could not unify judgments: " ++
+               show judg1 ++ " = " ++
+               show judg2
+    in te msg
 
 unifyExpr :: S.Set Var -> Expr -> Expr -> Either String Sub
 unifyExpr varSet expr1 expr2 = unifyExprs varSet [(expr1,expr2)]
@@ -71,6 +80,17 @@ unifyExprs varSet ((ECon name1 exprs1, ECon name2 exprs2) : eqs) =
         te $ "Could not unify: " ++
                    show (ECon name1 exprs1) ++ " = " ++
                    show (ECon name2 exprs2)
+unifyExprs varSet ((ELex lex1, ELex lex2) : eqs) =
+    if lex1 == lex2 then
+        unifyExprs varSet eqs
+    else
+        te $ "Could not unify: " ++
+                   show (ELex lex1) ++ " = " ++
+                   show (ELex lex2)
+unifyExprs varSet ((expr1,expr2) : eqs) =
+    te $ "Could not unify: " ++
+                   show expr1 ++ " = " ++
+                   show expr2
 
 ($$) :: (a -> b) -> (a,a) -> (b,b)
 f $$ (a1,a2) = (f a1, f a2)

@@ -6,9 +6,8 @@ import           Rewrite
 import           Syntax
 import WFExt
 
-
 soundExt :: Base -> Ext -> Either String ()
-soundExt base ext@(Ext aritysX infRulesX univRRsX grdRRsX) = do
+soundExt base ext@(Ext sdeclsX aritysX infRulesX univRRsX grdRRsX) = do
   mapM_ (classifyInfRule base ext) infRulesX
 
 -- classifyInfRule :: Base -> Ext -> InfRule

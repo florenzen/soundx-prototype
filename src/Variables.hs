@@ -2,67 +2,67 @@ module Variables where
 
 import Syntax
 
-evar :: Name -> Expr
-evar name = ECon name []
-evA :: Expr
-evA = evar "a"
-evB :: Expr
-evB = evar "b"
-evC :: Expr
-evC = evar "c"
-evD :: Expr
-evD = evar "d"
-evE :: Expr
-evE = evar "e"
-evF :: Expr
-evF = evar "f"
-evG :: Expr
-evG = evar "g"
-evA1 :: Expr
-evA1 = evar "a1"
-evB1 :: Expr
-evB1 = evar "b1"
-evC1 :: Expr
-evC1 = evar "c1"
-evD1 :: Expr
-evD1 = evar "d1"
-evE1 :: Expr
-evE1 = evar "e1"
-evF1 :: Expr
-evF1 = evar "f1"
-evG1 :: Expr
-evG1 = evar "g1"
-evA2 :: Expr
-evA2 = evar "a2"
-evB2 :: Expr
-evB2 = evar "b2"
-evC2 :: Expr
-evC2 = evar "c2"
-evD2 :: Expr
-evD2 = evar "d2"
-evE2 :: Expr
-evE2 = evar "e2"
-evF2 :: Expr
-evF2 = evar "f2"
-evG2 :: Expr
-evG2 = evar "g2"
+-- evar :: Name -> Expr
+-- evar name = ECon name []
+-- evA :: Expr
+-- evA = evar "a"
+-- evB :: Expr
+-- evB = evar "b"
+-- evC :: Expr
+-- evC = evar "c"
+-- evD :: Expr
+-- evD = evar "d"
+-- evE :: Expr
+-- evE = evar "e"
+-- evF :: Expr
+-- evF = evar "f"
+-- evG :: Expr
+-- evG = evar "g"
+-- evA1 :: Expr
+-- evA1 = evar "a1"
+-- evB1 :: Expr
+-- evB1 = evar "b1"
+-- evC1 :: Expr
+-- evC1 = evar "c1"
+-- evD1 :: Expr
+-- evD1 = evar "d1"
+-- evE1 :: Expr
+-- evE1 = evar "e1"
+-- evF1 :: Expr
+-- evF1 = evar "f1"
+-- evG1 :: Expr
+-- evG1 = evar "g1"
+-- evA2 :: Expr
+-- evA2 = evar "a2"
+-- evB2 :: Expr
+-- evB2 = evar "b2"
+-- evC2 :: Expr
+-- evC2 = evar "c2"
+-- evD2 :: Expr
+-- evD2 = evar "d2"
+-- evE2 :: Expr
+-- evE2 = evar "e2"
+-- evF2 :: Expr
+-- evF2 = evar "f2"
+-- evG2 :: Expr
+-- evG2 = evar "g2"
 
-modid :: Name -> Expr
-modid name = ECon name []
-modA :: Expr
-modA = modid "MA"
-modB :: Expr
-modB = modid "MB"
-modC :: Expr
-modC = modid "MC"
-modD :: Expr
-modD = modid "MD"
-modE :: Expr
-modE = modid "ME"
-modF :: Expr
-modF = modid "MF"
-modG :: Expr
-modG = modid "MG"
+-- modid :: Name -> Expr
+-- modid name = ECon name []
+-- modA :: Expr
+-- modA = modid "MA"
+-- modB :: Expr
+-- modB = modid "MB"
+-- modC :: Expr
+-- modC = modid "MC"
+-- modD :: Expr
+-- modD = modid "MD"
+-- modE :: Expr
+-- modE = modid "ME"
+-- modF :: Expr
+-- modF = modid "MF"
+-- modG :: Expr
+-- modG = modid "MG"
 
 mvar :: Name -> Name -> Expr
 mvar name nameS = EVar (Var name nameS)
@@ -79,23 +79,25 @@ vC2 = mvar "C2" "Env"
 vCD :: Expr
 vCD = mvar "CD" "Env"
 vx :: Expr
-vx = mvar "x" "Id"
+vx = mvar "x" "ID"
 vy :: Expr
-vy = mvar "y" "Id"
+vy = mvar "y" "ID"
 vz :: Expr
-vz = mvar "z" "Id"
+vz = mvar "z" "ID"
 vx1 :: Expr
-vx1 = mvar "x1" "Id"
+vx1 = mvar "x1" "ID"
 vy1 :: Expr
-vy1 = mvar "y1" "Id"
+vy1 = mvar "y1" "ID"
 vz1 :: Expr
-vz1 = mvar "z1" "Id"
+vz1 = mvar "z1" "ID"
 vx2 :: Expr
-vx2 = mvar "x2" "Id"
+vx2 = mvar "x2" "ID"
 vy2 :: Expr
-vy2 = mvar "y2" "Id"
+vy2 = mvar "y2" "ID"
 vz2 :: Expr
-vz2 = mvar "z2" "Id"
+vz2 = mvar "z2" "ID"
+vn :: Expr
+vn = mvar "n" "NAT"
 vxs :: Expr
 vxs = mvar "xs" "Ids"
 vT :: Expr
@@ -143,9 +145,9 @@ vBNNs = mvar "bdgs" "BindingsNN"
 vBBLs :: Expr
 vBBLs = mvar "bdgs" "BindingsBL"
 vmid :: Expr
-vmid = mvar "mid" "MId"
+vmid = mvar "mid" "MID"
 vmid1 :: Expr
-vmid1 = mvar "mid1" "MId"
+vmid1 = mvar "mid1" "MID"
 vrep :: Expr
 vrep = mvar "rep" "Rep"
 vdfs :: Expr
@@ -153,39 +155,39 @@ vdfs = mvar "dfs" "Defs"
 vimps :: Expr
 vimps = mvar "imps" "Imports"
 
-neq :: Expr -> Expr -> Judg
-neq x y = Judg [x,y] "neq"
-neqMId :: Expr -> Expr -> Judg
-neqMId mid1 mid2 = Judg [mid1,mid2] "neqMId"
+-- neq :: Expr -> Expr -> Judg
+-- neq x y = Judg [x,y] "neq"
+-- neqMId :: Expr -> Expr -> Judg
+-- neqMId mid1 mid2 = Judg [mid1,mid2] "neqMId"
 
-fvnil :: Expr
-fvnil = ECon "fvnil" []
-fvcons :: Expr -> Expr -> Expr
-fvcons x xs = ECon "fvcons" [x,xs]
+-- fvnil :: Expr
+-- fvnil = ECon "fvnil" []
+-- fvcons :: Expr -> Expr -> Expr
+-- fvcons x xs = ECon "fvcons" [x,xs]
 
-evars :: [Expr]
-evars = [evA,evB,evC,evD,evE,evF,evG] ++
-        [evA1,evB1,evC1,evD1,evE1,evF1,evG1] ++
-        [evA2,evB2,evC2,evD2,evE2,evF2,evG2]
+-- evars :: [Expr]
+-- evars = [evA,evB,evC,evD,evE,evF,evG] ++
+--         [evA1,evB1,evC1,evD1,evE1,evF1,evG1] ++
+--         [evA2,evB2,evC2,evD2,evE2,evF2,evG2]
 
-mids :: [Expr]
-mids = [modA,modB,modC,modD,modE,modF,modG]
+-- mids :: [Expr]
+-- mids = [modA,modB,modC,modD,modE,modF,modG]
 
-fvs :: Expr
-fvs = foldr fvcons fvnil evars
+-- fvs :: Expr
+-- fvs = foldr fvcons fvnil evars
 
-infRulesNeq :: [InfRule]
-infRulesNeq =
-  [ InfRule [] ("neq" ++ show x ++ show y) (neq x y)
-        | x <- evars, y <- evars, x /= y ]
+-- infRulesNeq :: [InfRule]
+-- infRulesNeq =
+--   [ InfRule [] ("neq" ++ show x ++ show y) (neq x y)
+--         | x <- evars, y <- evars, x /= y ]
 
-infRulesNeqMId :: [InfRule]
-infRulesNeqMId =
-  [ InfRule [] ("neqMid" ++ show mid1 ++ show mid2) (neqMId mid1 mid2)
-            | mid1 <- mids, mid2 <- mids, mid1 /= mid2 ]
+-- infRulesNeqMId :: [InfRule]
+-- infRulesNeqMId =
+--   [ InfRule [] ("neqMid" ++ show mid1 ++ show mid2) (neqMId mid1 mid2)
+--             | mid1 <- mids, mid2 <- mids, mid1 /= mid2 ]
 
-aritiesId :: [Arity]
-aritiesId = [ Arity name [] "Id" | (ECon name []) <- evars ]
+-- aritiesId :: [Arity]
+-- aritiesId = [ Arity name [] "Id" | (ECon name []) <- evars ]
 
-aritiesMId :: [Arity]
-aritiesMId = [Arity name [] "MId" | (ECon name []) <- mids ]
+-- aritiesMId :: [Arity]
+-- aritiesMId = [Arity name [] "MId" | (ECon name []) <- mids ]

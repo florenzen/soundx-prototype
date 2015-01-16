@@ -1,6 +1,6 @@
 module Rewrite where
 
--- import Debug.Trace
+import Debug.Trace
 
 import           Control.Applicative
 import           Control.Monad
@@ -36,9 +36,16 @@ rewriteExprApply univRRs expr =
           let (subFresh, UnivRR expr1 expr2) = freshUnivRR (varsExpr expr) univRR
           in case unifyExpr (varsExpr expr1) expr1 expr of
                Left msg -> Nothing
-               Right sub -> Just (applySubExpr sub expr2)
+               Right sub -> -- trace ("Expr1: " ++ show expr1 ++
+                            --        "\nvars Expr1: " ++ show (varsExpr expr1) ++
+                            --        "\nExpr: " ++ show expr ++
+                            --        "\nSub " ++ show sub ++
+                            --        "\nResult: " ++ show (applySubExpr sub expr2))
+                            -- $
+                            Just (applySubExpr sub expr2)
 
 rewriteExprTraverse :: [UnivRR] -> Expr -> Maybe Expr
+rewriteExprTraverse univRRs (ELex lex) = Nothing
 rewriteExprTraverse univRRs (EVar var) = Nothing
 rewriteExprTraverse univRRs (ECon name exprs) =
   pure (ECon name) <*> mapLeftmost (rewriteExpr univRRs) exprs
@@ -46,6 +53,9 @@ rewriteExprTraverse univRRs (ECon name exprs) =
 rewriteJudg :: [UnivRR] -> Judg -> Maybe Judg
 rewriteJudg univRRs (Judg exprs name) =
   pure (flip Judg name) <*> mapLeftmost (rewriteExpr univRRs) exprs
+rewriteJudg univRRs (Neq expr1 expr2) =
+    pure Neq <*> rewriteExpr univRRs expr1 <*>
+         rewriteExpr univRRs expr2
 
 rewriteSub :: [UnivRR] -> Sub -> Maybe Sub
 rewriteSub univRRs sub =
@@ -128,7 +138,7 @@ desugarDerivBase base ext deriv@(Deriv derivs name judg) = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritysX infRulesX univRRsX grdRRsX = ext
+      Ext sdeclsX aritysX infRulesX univRRsX grdRRsX = ext
   infRule <- findInfRule infRules name
   let (subFresh, InfRule judgsIR nameIR judgIR) =
           freshInfRule (varsDeriv deriv) infRule
@@ -160,15 +170,16 @@ desugarDerivBase base ext deriv@(Deriv derivs name judg) = do
 -- Implements D-ExtensionBU
 desugarDerivExtBU :: Base -> Ext -> Deriv -> Maybe Deriv
 desugarDerivExtBU base ext deriv@(Deriv derivs name judg) = do
-  let arities = getBaseArities base
+  let sdecls = getBaseSortDecls base
+      arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext sdeclsX aritiesX infRulesX univRRsX grdRRsX = ext
   infRule <- findInfRule infRulesX name
   let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
           freshInfRule (varsDeriv deriv) infRule
       (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX (judgsIR,judgIR)
-  guard (all isRight (map (wfJudg arities forms) judgsIR'))
+  guard (all isRight (map (wfJudg sdecls arities forms) judgsIR'))
   derivs' <- mapM (desugarDeriv base ext) derivs
   sub1 <- case unifyJudgs (varsJudgs judgsIR')
                  (zip judgsIR' (map concl derivs')) of
@@ -200,15 +211,16 @@ desugarDerivExtBU base ext deriv@(Deriv derivs name judg) = do
 -- Implements D-ExtensionTD
 desugarDerivExtTD :: Base -> Ext -> Deriv -> Maybe Deriv
 desugarDerivExtTD base ext deriv@(Deriv derivs name judg) = do
-  let arities = getBaseArities base
+  let sdecls = getBaseSortDecls base
+      arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext sdeclsX aritiesX infRulesX univRRsX grdRRsX = ext
   infRule <- findInfRule infRulesX name
   let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
           freshInfRule (varsDeriv deriv) infRule
       (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX (judgsIR,judgIR)
-  guard (not (all isRight (map (wfJudg arities forms) judgsIR')))
+  guard (not (all isRight (map (wfJudg sdecls arities forms) judgsIR')))
   sub <- case unifyJudgs (varsJudgs (judgIR:judgsIR))
                 (zip (judgIR:judgsIR) (judg : map concl derivs)) of
            Right sub -> Just sub
@@ -226,11 +238,15 @@ desugarDerivExtTD base ext deriv@(Deriv derivs name judg) = do
                        show (map concl derivs))
 
 rewriteDerivBase :: Base -> Ext -> Deriv -> Maybe Deriv
+rewriteDerivBase base ext deriv@(Deriv [] _ (Neq _ _)) =
+    return deriv -- There can only be lexical expressions
+                 -- Neq which cannot be desugared
+                 -- They are excluded by the wf conditions
 rewriteDerivBase base ext deriv@(Deriv derivs name judg) = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritysX infRulesX univRRsX grdRRsX = ext
+      Ext sdeclsX aritysX infRulesX univRRsX grdRRsX = ext
   infRule <- findInfRule infRules name
   let (subFresh, InfRule judgsIR nameIR judgIR) =
           freshInfRule (varsDeriv deriv) infRule
@@ -259,10 +275,11 @@ rewriteDerivBase base ext deriv@(Deriv derivs name judg) = do
 
 rewriteDerivExtBase :: Base -> Ext -> Deriv -> Maybe Deriv
 rewriteDerivExtBase base ext deriv@(Deriv derivs name judg) = do
-  let arities = getBaseArities base
+  let sdecls = getBaseSortDecls base
+      arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext sdeclsX aritiesX infRulesX univRRsX grdRRsX = ext
   infRule <- findInfRule infRulesX name
   let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
           freshInfRule (varsDeriv deriv) infRule
@@ -299,10 +316,11 @@ rewriteDerivExtBase base ext deriv@(Deriv derivs name judg) = do
 
 rewriteDerivExtExt :: Base -> Ext -> Deriv -> Maybe Deriv
 rewriteDerivExtExt base ext deriv@(Deriv derivs name judg) = do
-  let arities = getBaseArities base
+  let sdecls = getBaseSortDecls base
+      arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext sdeclsX aritiesX infRulesX univRRsX grdRRsX = ext
   infRule <- findInfRule infRulesX name
   let (subFresh, infRule1@(InfRule judgsIR nameIR judgIR)) =
           freshInfRule (varsDeriv deriv) infRule
@@ -322,7 +340,7 @@ rewriteDerivExtExt base ext deriv@(Deriv derivs name judg) = do
   case deriveResult of
     Right deriv' -> return deriv'
     -- desugarDeriv base ext deriv'
-    Left msg -> error ("desugarDerivExtTD: resolution failed. MUST NOT HAPPEN" ++
+    Left _ -> error ("desugarDerivExtTD: resolution failed. MUST NOT HAPPEN" ++
                        "\n  Conclusion to derive:       " ++ show judgIR'' ++
                        "\n  Conclusions of assumptions: " ++
                        show (map concl derivs))
@@ -395,13 +413,14 @@ classifyInfRule base ext infRule =
 classifyInfRulePB :: Base -> Ext -> InfRule
                   -> Either String InfRuleClass
 classifyInfRulePB base ext infRule = do
-  let arities = getBaseArities base
+  let sdecls = getBaseSortDecls base
+      arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext sdelcsX aritiesX infRulesX univRRsX grdRRsX = ext
       InfRule judgsIR nameIR judgIR = infRule
       (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX (judgsIR,judgIR)
-  when (not (all isRight (map (wfJudg arities forms) judgsIR')))
+  when (not (all isRight (map (wfJudg sdecls arities forms) judgsIR')))
            (Left $ "cannot be classified as B rule")
   case derive (map Asm judgsIR') infRules judgIR' of
     Right deriv' ->
@@ -419,7 +438,7 @@ classifyInfRulePE base ext infRule = do
   let arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-      Ext aritiesX infRulesX univRRsX grdRRsX = ext
+      Ext sdeclsX aritiesX infRulesX univRRsX grdRRsX = ext
       InfRule judgsIR nameIR judgIR = infRule
       (judgsIR',judgIR') = desugarInfRule univRRsX grdRRsX
                            (judgsIR,judgIR)

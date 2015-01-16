@@ -24,7 +24,8 @@ intfMod intfs base mod = do
 
 wfMod :: [Intf] -> Base -> Mod -> Either String (Intf,[Ext],Deriv)
 wfMod intfs base mod = do
-  let arities = getBaseArities base
+  let sdecls = getBaseSortDecls base
+      arities = getBaseArities base
 
   -- Module system definition from base system
   let modCon = getBaseModCon base
@@ -55,12 +56,12 @@ wfMod intfs base mod = do
 
   -- Module identifier
   let modId = getEConExprs expr !! 0
-  nameS <- wfExpr arities modId
+  nameS <- wfExpr sdecls arities modId
   unless (nameS == modIdSort)
          (throwError "module identifier of wrong sort")
   -- Import list
   let imps = getEConExprs expr !! 1
-  nameS <- wfExpr arities imps
+  nameS <- wfExpr sdecls arities imps
   unless (nameS == impsSort)
          (throwError "import list not well-formed")
 
@@ -99,6 +100,13 @@ wfMod intfs base mod = do
 
   -- Interface: signature and imported plus defined extensions
   return (Intf modId exprSig (extsImp++[ext]), extsImp, deriv)
+
+buildDerivation1 :: [Deriv] -> [InfRule] -> Judg
+                 -> Either String Deriv
+buildDerivation1 derivsAsm infRules judg =
+    case buildDerivation derivsAsm infRules judg of
+      Left derivs -> Left (show derivs)
+      Right deriv -> Right deriv
 
 findModIdsImp :: Name -> Name -> [Name] -> Expr -> Either String [Expr]
 findModIdsImp impsConNil impsConCons impCons (EVar var) =

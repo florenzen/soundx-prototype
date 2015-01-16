@@ -12,22 +12,26 @@ import Syntax
 
 
 wfExt :: Base -> Ext -> Either String ()
-wfExt base (Ext aritiesX infRulesX univRRs grdRRs) = do
-  let arities = getBaseArities base
+wfExt base (Ext sdeclsX aritiesX infRulesX univRRs grdRRs) = do
+  let sdecls = getBaseSortDecls base
+      arities = getBaseArities base
       forms = getBaseForms base
       infRules = getBaseInfRules base
-  wfArities (arities++aritiesX)
-  wfInfRules (arities++aritiesX) forms (infRules++infRulesX)
-  mapM_ (wfGrdRR (arities++aritiesX) forms) grdRRs
-  mapM_ (wfUnivRR (arities++aritiesX)) univRRs
+  wfSortDecls (sdecls++sdeclsX)
+  wfArities (sdecls++sdeclsX) (arities++aritiesX)
+  wfInfRules (sdecls++sdeclsX) (arities++aritiesX) forms (infRules++infRulesX)
+  mapM_ (wfGrdRR (sdecls++sdeclsX) (arities++aritiesX) forms) grdRRs
+  mapM_ (wfUnivRR (sdecls++sdeclsX) (arities++aritiesX)) univRRs
 
 -- Implements W-Universal
-wfUnivRR :: [Arity] -> UnivRR -> Either String ()
-wfUnivRR arities (UnivRR (EVar var) expr') =
+wfUnivRR :: [SortDecl] -> [Arity] -> UnivRR -> Either String ()
+wfUnivRR sdecls arities (UnivRR (ELex lex) expr') =
+    throwError "lhs cannot be a lexical constant"
+wfUnivRR sdecls arities (UnivRR (EVar var) expr') =
     throwError "lhs cannot be a variable"
-wfUnivRR arities (UnivRR expr@(ECon name exprs) expr') = do
-  nameS  <- wfExpr arities (ECon name exprs)
-  nameS' <- wfExpr arities expr'
+wfUnivRR sdecls arities (UnivRR expr@(ECon name exprs) expr') = do
+  nameS  <- wfExpr sdecls arities (ECon name exprs)
+  nameS' <- wfExpr sdecls arities expr'
   unless (nameS == nameS')
              (throwError "sorts of lhs and rhs do not match")
   unless (varsExpr expr' `S.isSubsetOf` varsExpr expr)
@@ -37,17 +41,17 @@ wfUnivRR arities (UnivRR expr@(ECon name exprs) expr') = do
   --            (throwError $ "constructor on lhs not from extension: " ++ name)
 
 -- Implements W-Guarded
-wfGrdRR :: [Arity] -> [Form] -> GrdRR -> Either String ()
-wfGrdRR arities forms
+wfGrdRR :: [SortDecl] -> [Arity] -> [Form] -> GrdRR -> Either String ()
+wfGrdRR sdecls arities forms
             (GrdRR judgs exprs1 (EVar var) exprs2 name1 expr') =
                 throwError "lhs cannot be a variable"
-wfGrdRR arities forms
+wfGrdRR sdecls arities forms
         (GrdRR judgs exprs1 expr@(ECon name exprs) exprs2 name1 expr') = do
-  mapM_ (wfJudg arities forms) judgs
-  wfJudg arities forms
+  mapM_ (wfJudg sdecls arities forms) judgs
+  wfJudg sdecls arities forms
              (Judg (exprs1++[ECon name exprs]++exprs2) name1)
-  nameS <- wfExpr arities (ECon name exprs)
-  nameS' <- wfExpr arities expr'
+  nameS <- wfExpr sdecls arities (ECon name exprs)
+  nameS' <- wfExpr sdecls arities expr'
   unless (nameS == nameS')
              (throwError "sorts of lhs and rhs do not match")
   let varSetLhs = varsJudgs judgs `S.union` varsExprs exprs1

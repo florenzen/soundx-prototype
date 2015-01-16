@@ -16,6 +16,7 @@ applySubDeriv :: Sub -> Deriv -> Deriv
 applySubDeriv sub (Asm judg) = Asm (applySubJudg sub judg)
 applySubDeriv sub (Deriv derivs name judg) =
     Deriv (applySubDerivs sub derivs) name (applySubJudg sub judg)
+applySubDeriv sub (Fail judg) = Fail (applySubJudg sub judg)
 
 applySubDerivs :: Sub -> [Deriv] -> [Deriv]
 applySubDerivs sub = map (applySubDeriv sub)
@@ -26,6 +27,8 @@ applySubJudgs sub = map (applySubJudg sub)
 applySubJudg :: Sub -> Judg -> Judg
 applySubJudg sub (Judg exprs name) =
     Judg (applySubExprs sub exprs) name
+applySubJudg sub (Neq expr1 expr2) =
+    Neq (applySubExpr sub expr1) (applySubExpr sub expr2)
 
 applySubExprs :: Sub -> [Expr] -> [Expr]
 applySubExprs sub = map (applySubExpr sub)
@@ -34,6 +37,7 @@ applySubExpr :: Sub -> Expr -> Expr
 applySubExpr sub (EVar var) = fromMaybe (EVar var) (M.lookup var sub)
 applySubExpr sub (ECon name exprs) =
     ECon name (map (applySubExpr sub) exprs)
+applySubExpr sub (ELex lex) = ELex lex
 
 singletonSub :: Var -> Expr -> Sub
 singletonSub var expr = M.singleton var expr
@@ -74,3 +78,9 @@ varsSub :: Sub -> S.Set Var
 varsSub sub =
     M.foldrWithKey (\var expr varSet -> varSet `S.union` varsExpr expr)
          (domSub sub) sub
+
+toListSub :: Sub -> [(Var,Expr)]
+toListSub = M.toList
+
+fromListSub :: [(Var,Expr)] -> Sub
+fromListSub = M.fromList
