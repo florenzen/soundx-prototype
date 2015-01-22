@@ -1,16 +1,16 @@
 module TestSimpleTypes where
 
-import Test.HUnit
-import Prelude hiding (mod)
-import Data.Either.Utils
+import           Test.HUnit
+import           Prelude hiding (mod)
 
 import qualified Driver as D
-import SimpleTypes
-import SimpleTypesExtensions
-import Variables
-import Test
-import Syntax
-import WFMod
+import           SimpleTypes
+import           SimpleTypesExtensions
+import           Syntax
+import           Test
+import           Variables
+import           WFMod
+import Utils
 
 
 texDerive :: (t, [Ext], Judg) -> IO ()
