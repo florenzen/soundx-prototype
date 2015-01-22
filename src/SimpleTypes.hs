@@ -306,6 +306,9 @@ infRulesMod = [
           dj (envtm vC vx vT) vdfs vC1,
           uj (envtm envnil vx vT) vC1 vC2] "D-Val"
          (dj vC (dfcons vx vt vdfs) vC2)
+ -- InfRule [fj vx vC,
+ --          tj vC vt vT] "D-End"
+ --         (dj vC (dfcons vx vt dfnil) (envtm envnil vx vT))
  ]
 
 infRulesST :: [InfRule]
