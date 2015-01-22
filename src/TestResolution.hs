@@ -1,7 +1,7 @@
 module TestResolution where
 
 import qualified Data.Set as S
-import           Resolution
+import           Derive
 import           SimpleTypes
 import           Syntax
 import           Validation
@@ -57,7 +57,7 @@ test12 :: Judg
 test12 = tj envnil (tmabs (lid "a") tybool (tmadd (tmvar (lid "a")) (tmnum (lnat "6")))) vU
 
 test13 :: Either [Deriv] Deriv
-test13 = Resolution.buildDerivation [] infRulesST
+test13 = Derive.buildDerivation [] infRulesST
        (sj
         (repcons (lmid "modF") (envtm envnil (lid "x") tynat) repnil)
         (md (lmid "moda")
@@ -69,7 +69,7 @@ test13 = Resolution.buildDerivation [] infRulesST
         vC)
 
 test14 :: Either [Deriv] Deriv
-test14 = Resolution.buildDerivation [] infRulesST
+test14 = Derive.buildDerivation [] infRulesST
         (ij
          (repcons (lmid "modF") (envtm envnil (lid "x") tynat) repnil)
          (impcons (imp (lmid "modF"))
@@ -77,7 +77,7 @@ test14 = Resolution.buildDerivation [] infRulesST
          vC)
 
 test15 :: Either [Deriv] Deriv
-test15 = Resolution.buildDerivation [] infRulesST
+test15 = Derive.buildDerivation [] infRulesST
        (dj
         (envtm envnil (lid "x") tynat)
         (dfcons (lid "a") (tmnum (lnat "1"))
