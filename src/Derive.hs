@@ -50,7 +50,9 @@ deriveAns varSet derivsAsm infRules st judg@(Judg exprs name) =
               let (ok, st1) = propagate varSetAsm eqs st,
               ok,
               let varSet1 = varSet `S.union` varsJudgs judgsIR,
-              (st2, derivs) <- concatMapAccumL (deriveAns varSet1 derivsAsm infRules) st1 judgsIR,
+              ((st2, ok1), derivs) <-
+                  deriveAnsForPremises varSet1 derivsAsm infRules st1 judgsIR,
+              ok1, -- Only continue of the previous call produced something usable
               let st3 = removeConflictingNeqs st2
               -- If derivs contains Fail then we could produce a Fail node
               -- here including the messages from the failed subderivations and
@@ -65,6 +67,31 @@ deriveAns varSet derivsAsm infRules st judg@(Judg exprs name) =
                           ansInfRule
         ansAsm = deriveByAsm derivsAsm st judg
     in filterAns (ansInfRule1++ansAsm)
+
+-- Derives answers for the list of judgements, one after the other.
+-- If one judgement can only be answered with failure derivations,
+-- the remaining judgements are not derived anymore. The boolean
+-- flag in the return value indicates if derivation has been aborted.
+-- It is True for the results are valid, False otherwise.
+-- Aborting is necessary since otherwise a judgement to be
+-- derived after a failed one might lead to n infinite loop because
+-- the answers of the non-derivable judgement do not provide
+-- enough bindings for the metavariables.
+-- The rules S-DefEnd and S-DefCons of STLC are an example of this.
+deriveAnsForPremises :: S.Set Var -> [Deriv] -> [InfRule] -> Store -> [Judg]
+                     -> [((Store, Bool), [Deriv])]
+deriveAnsForPremises varSet derivsAsm infRules st judgs =
+    let lift ok = map (\(st, deriv) -> ((st, ok), deriv))
+        derive (st, ok) judg =
+            if ok then
+                let ans = deriveAns varSet derivsAsm infRules st judg
+                in if any (isFailed . snd) ans then
+                       lift False ans
+                   else
+                       lift ok ans
+            else
+                []
+    in concatMapAccumL derive (st, True) judgs
 
 deriveByAsm :: [Deriv] -> Store -> Judg -> [Answer]
 deriveByAsm derivsAsm st judg =
