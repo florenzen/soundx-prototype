@@ -50,9 +50,12 @@ deriveAns varSet derivsAsm infRules st judg@(Judg exprs name) =
               let (ok, st1) = propagate varSetAsm eqs st,
               ok,
               let varSet1 = varSet `S.union` varsJudgs judgsIR,
-              ((st2, ok1), derivs) <-
-                  deriveAnsForPremises varSet1 derivsAsm infRules st1 judgsIR,
-              ok1, -- Only continue of the previous call produced something usable
+              (st2, derivs) <-
+                  concatMapAccumL (deriveAns varSet1 derivsAsm infRules) st1 judgsIR,
+              -- Disabled, see "BUT" note at deriveAnsForPremises
+              -- ((st2, ok1), derivs) <-
+              --     deriveAnsForPremises varSet1 derivsAsm infRules st1 judgsIR,
+              -- ok1, -- Only continue of the previous call produced something usable
               let st3 = removeConflictingNeqs st2
               -- If derivs contains Fail then we could produce a Fail node
               -- here including the messages from the failed subderivations and
@@ -78,6 +81,7 @@ deriveAns varSet derivsAsm infRules st judg@(Judg exprs name) =
 -- the answers of the non-derivable judgement do not provide
 -- enough bindings for the metavariables.
 -- The rules S-DefEnd and S-DefCons of STLC are an example of this.
+-- BUT: this stops finding more than one error.
 deriveAnsForPremises :: S.Set Var -> [Deriv] -> [InfRule] -> Store -> [Judg]
                      -> [((Store, Bool), [Deriv])]
 deriveAnsForPremises varSet derivsAsm infRules st judgs =
