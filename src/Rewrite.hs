@@ -10,7 +10,6 @@ import qualified Data.Map as M
 import           Data.Maybe
 import qualified Data.Set as S
 import           Prelude hiding (repeat)
-import           Data.Either.Utils
 
 import           Derive
 import           Freshening

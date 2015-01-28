@@ -71,7 +71,8 @@ deriveSubByAsm derivsAll (deriv:derivs) infRules (judg:judgs) varSet =
         (sub,derivs) <- deriveSub derivsAll infRules
                            (applySubJudgs subMgu judgs) varSet
         let sub1 = sub `composeSub` subMgu
-        return (sub1, applySubDeriv sub1 deriv : derivs))
+        return (sub1, --applySubDeriv sub1
+                    deriv : derivs))
     `catchError`
     (\msg -> deriveSubByAsm derivsAll derivs
              infRules (judg:judgs) varSet)

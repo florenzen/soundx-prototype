@@ -2,7 +2,6 @@ module WFBase where
 
 import Control.Monad
 import Control.Monad.Error
-import Data.Either.Utils
 
 import Syntax
 import Utils

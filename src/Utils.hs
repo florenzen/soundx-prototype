@@ -4,6 +4,13 @@ import Control.Monad
 -- import Debug.Trace
 import Prelude hiding (repeat)
 
+fromRight :: Either a b -> b
+fromRight (Right x) = x
+
+maybeToEither :: a -> Maybe b -> Either a b
+maybeToEither a Nothing = Left a
+maybeToEither a (Just b) = Right b
+
 isLeft :: Either a b -> Bool
 isLeft (Left x) = True
 isLeft (Right x) = False
